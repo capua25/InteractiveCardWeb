@@ -27,4 +27,12 @@ describe("WhatsAppButton", () => {
     expect(link).toHaveClass("bg-[#25d366]", "text-neutral-950");
     expect(link).not.toHaveClass("text-white");
   });
+
+  // El outline verde sobre blanco quedaba ~2:1 (falla WCAG 1.4.11); neutral-950 supera 3:1 en ambos fondos.
+  it.each(["inline", "floating"] as const)("la variante %s usa un outline de foco oscuro (contraste)", (variant) => {
+    render(<WhatsAppButton href={href} variant={variant} />);
+    const link = screen.getByRole("link");
+    expect(link).toHaveClass("focus-visible:outline-neutral-950");
+    expect(link).not.toHaveClass("focus-visible:outline-[#25d366]");
+  });
 });
