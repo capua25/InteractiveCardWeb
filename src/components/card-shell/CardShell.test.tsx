@@ -35,4 +35,16 @@ describe("CardShell", () => {
     expect(screen.getByRole("heading", { name: "Contenido de la tarjeta" })).toBeInTheDocument();
     expect(screen.getByTestId("whatsapp-floating")).toHaveAttribute("href", href);
   });
+
+  it("al abrir el sobre mueve el foco al contenedor del contenido", async () => {
+    renderShell(true);
+    await userEvent.click(screen.getByRole("button", { name: "Abrir la invitación de Salón X" }));
+    expect(screen.getByTestId("card-content")).toHaveFocus();
+  });
+
+  it("con envelope: false no mueve el foco al montar", () => {
+    renderShell(false);
+    expect(screen.getByTestId("card-content")).not.toHaveFocus();
+    expect(document.body).toHaveFocus();
+  });
 });
