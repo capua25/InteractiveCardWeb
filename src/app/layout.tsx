@@ -11,6 +11,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   metadataBase: getSiteUrl(),
+  title: { default: "Salón de eventos", template: "%s" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

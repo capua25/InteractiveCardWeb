@@ -29,6 +29,17 @@ export function CardShell({ envelope, venueName, logo, whatsappHref, children }:
     }
   }, [opened]);
 
+  // `inert` bloquea la interacción pero no el scroll: mientras el sobre está
+  // cerrado fijamos el overflow del body y lo restauramos al abrir/desmontar.
+  useEffect(() => {
+    if (opened) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [opened]);
+
   return (
     <MotionConfig reducedMotion="user">
       <AnimatePresence>

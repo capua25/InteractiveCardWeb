@@ -6,9 +6,9 @@ type WhatsAppButtonProps = {
 
 const variantClasses = {
   inline:
-    "inline-flex items-center justify-center gap-2 rounded-full bg-[#25d366] px-6 py-3 text-base font-semibold text-white shadow-md transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25d366]",
+    "inline-flex items-center justify-center gap-2 rounded-full bg-[#25d366] px-6 py-3 text-base font-semibold text-neutral-950 shadow-md transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25d366]",
   floating:
-    "fixed bottom-5 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-white shadow-lg transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25d366]",
+    "fixed bottom-5 right-5 z-40 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#25d366] text-neutral-950 shadow-lg transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#25d366]",
 } as const;
 
 export function WhatsAppButton({

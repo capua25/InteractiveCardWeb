@@ -19,4 +19,12 @@ describe("WhatsAppButton", () => {
     expect(link).toHaveAttribute("data-testid", "whatsapp-floating");
     expect(link).not.toHaveTextContent("Escribinos");
   });
+
+  // jsdom no calcula contraste: afirmamos la clase. Blanco sobre #25d366 ~2:1; neutral-950 ~10:1.
+  it.each(["inline", "floating"] as const)("la variante %s usa texto oscuro sobre el verde (contraste)", (variant) => {
+    render(<WhatsAppButton href={href} variant={variant} />);
+    const link = screen.getByRole("link");
+    expect(link).toHaveClass("bg-[#25d366]", "text-neutral-950");
+    expect(link).not.toHaveClass("text-white");
+  });
 });

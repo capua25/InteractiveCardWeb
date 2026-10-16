@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { CardShell } from "@/components/card-shell/CardShell";
 
 const href = "https://wa.me/5491100000000?text=Hola";
@@ -14,6 +14,10 @@ function renderShell(envelope: boolean) {
 }
 
 describe("CardShell", () => {
+  afterEach(() => {
+    document.body.style.overflow = "";
+  });
+
   it("con sobre: oculta el contenido y el botón flotante hasta abrirlo", () => {
     renderShell(true);
     expect(screen.getByRole("button", { name: "Abrir la invitación de Salón X" })).toBeInTheDocument();
@@ -46,5 +50,29 @@ describe("CardShell", () => {
     renderShell(false);
     expect(screen.getByTestId("card-content")).not.toHaveFocus();
     expect(document.body).toHaveFocus();
+  });
+
+  it("con sobre: bloquea el scroll del body y lo restaura al abrir", async () => {
+    document.body.style.overflow = "auto";
+    renderShell(true);
+    expect(document.body.style.overflow).toBe("hidden");
+    await userEvent.click(screen.getByRole("button", { name: "Abrir la invitación de Salón X" }));
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
+  it("restaura el overflow del body si se desmonta con el sobre cerrado", () => {
+    document.body.style.overflow = "auto";
+    const { unmount } = renderShell(true);
+    expect(document.body.style.overflow).toBe("hidden");
+    unmount();
+    expect(document.body.style.overflow).toBe("auto");
+  });
+
+  it("con envelope: false nunca toca el overflow del body", () => {
+    document.body.style.overflow = "auto";
+    const { unmount } = renderShell(false);
+    expect(document.body.style.overflow).toBe("auto");
+    unmount();
+    expect(document.body.style.overflow).toBe("auto");
   });
 });
