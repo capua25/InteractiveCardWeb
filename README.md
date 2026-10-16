@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tarjeta interactiva para salón de eventos
 
-## Getting Started
+Tarjeta web mobile-first (estilo invitación) para promocionar un salón y recibir consultas por WhatsApp.
+Next.js 16 (App Router, SSG) + Tailwind 4 + Motion.
 
-First, run the development server:
+## Desarrollo
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000 → redirige al primer salón
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Agregar un salón
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Crear `public/venues/<slug>/` con las imágenes: foto principal, logo (opcional), galería (opcional)
+   y una imagen OG **PNG o JPG de 1200×630** (WhatsApp no muestra SVG en la preview).
+   Para un placeholder: `node scripts/make-og-placeholder.mjs public/venues/<slug>/og.png 7a1f3d`.
+2. Agregar un objeto `Venue` en `src/content/venues.ts` (el tipo está en `src/domain/venue.ts`).
+   - Obligatorios: `slug`, `name`, `tagline`, `theme`, `envelope`, `whatsapp`, `hero`, `seo`.
+   - Opcionales (si faltan, la sección no se muestra): `logo`, `about`, `eventTypes`, `gallery`,
+     `services`, `location`, `socials`.
+   - `whatsapp.phone` acepta cualquier formato (`+54 9 11 1234-5678`): se limpia a dígitos.
+   - `theme.fontHeading` es un `font-family` CSS; `"var(--font-playfair), Georgia, serif"` usa la fuente ya cargada.
+   - `location.embedUrl`: en Google Maps → Compartir → Insertar un mapa → copiar el `src` del iframe.
+3. La tarjeta queda en `/<slug>`. No hace falta tocar componentes: si falta un campo obligatorio, el build no compila.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tests
 
-## Learn More
+```bash
+npm test           # Vitest (unit + componentes)
+npm run test:e2e   # Playwright (build + start en :3100, emulando un Pixel 7)
+```
 
-To learn more about Next.js, take a look at the following resources:
+La primera vez: `npx playwright install chromium`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy en Vercel
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Importar el repo en Vercel (framework Next.js detectado automáticamente, sin configuración extra).
+   Requiere **Node >= 24.15** (jsdom 30.1.3 exige `^24.15.0` en la rama 24; con 24.14 npm avisa con `EBADENGINE`).
+2. Definir `NEXT_PUBLIC_SITE_URL` (p. ej. `https://tusalon.com.ar`) con el dominio público de la tarjeta.
+   `src/lib/site-url.ts` lee, en este orden, `NEXT_PUBLIC_SITE_URL`, `VERCEL_PROJECT_PRODUCTION_URL` (la define Vercel automáticamente) y, si ninguna existe, `http://localhost:3000`.
+   **Importante:** si ambas variables faltan en producción, las URLs absolutas de Open Graph (`og:image`) apuntan a `localhost` y la preview en WhatsApp no muestra la imagen.
+3. Verificar la preview pegando el link en WhatsApp.
