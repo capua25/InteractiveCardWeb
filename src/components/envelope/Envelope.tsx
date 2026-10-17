@@ -7,6 +7,7 @@ import {
   envelopeCollapse,
   envelopeIdle,
   envelopeOpening,
+  envelopeSettle,
   flapSpring,
   hintPulse,
   uiSpring,
@@ -47,7 +48,7 @@ export function Envelope({ venueName, logo, onOpen }: EnvelopeProps) {
           className="absolute inset-0 flex flex-col items-center justify-center gap-4 [perspective:800px]"
           animate={shouldAnimate ? envelopeIdle.animate : undefined}
           transition={shouldAnimate ? envelopeIdle.transition : undefined}
-          exit={{ y: 0, rotate: 0, transition: envelopeCollapse }}
+          exit={{ y: 0, rotate: 0, transition: { y: envelopeSettle, rotate: envelopeSettle } }}
         >
           {/* Dorso del sobre */}
           <span aria-hidden="true" className={`absolute inset-0 rounded-lg shadow-2xl ${PAPER}`} />

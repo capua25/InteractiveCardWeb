@@ -58,6 +58,10 @@ export const envelopeOpening = {
   fadeDuration: 0.45,
 } as const;
 
+// Al tocar, la flotación vuelve a reposo enseguida (mientras abre la solapa) en
+// lugar de congelarse a mitad de recorrido hasta el colapso.
+export const envelopeSettle: Transition = { duration: 0.3, ease: "easeOut" };
+
 export const envelopeCollapse: Transition = {
   duration: envelopeOpening.fadeDuration,
   delay: envelopeOpening.fadeDelay,
