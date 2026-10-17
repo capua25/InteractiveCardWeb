@@ -54,4 +54,17 @@ describe("Gallery", () => {
     await userEvent.click(screen.getByRole("button", { name: "Cerrar" }));
     expect(thumb).toHaveFocus();
   });
+
+  // La salida animada (layoutId + fundido) deja el nodo montado un instante:
+  // durante ese tramo no debe exponerse como diálogo ni ser interactivo.
+  // (jsdom no hace layout y la salida con layoutId no termina acá; el desmontaje
+  // real se verificó en Chromium.)
+  it("al cerrar deja de ser diálogo de inmediato y el nodo que sale queda inerte", async () => {
+    render(<Gallery images={images} />);
+    await userEvent.click(screen.getByRole("button", { name: "Ampliar imagen: Salón decorado" }));
+    const overlay = screen.getByRole("dialog");
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(!overlay.isConnected || overlay.hasAttribute("inert")).toBe(true);
+  });
 });
