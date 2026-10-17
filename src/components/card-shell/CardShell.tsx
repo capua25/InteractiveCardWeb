@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, MotionConfig } from "motion/react";
 import { Envelope } from "@/components/envelope/Envelope";
-import { WhatsAppButton } from "@/components/whatsapp-button/WhatsAppButton";
+import { FloatingWhatsApp } from "@/components/whatsapp-button/FloatingWhatsApp";
+import { ContentRevealedContext } from "@/components/card-shell/content-revealed-context";
 
 type CardShellProps = {
   envelope: boolean;
@@ -17,6 +18,9 @@ type CardShellProps = {
 // `children` llega renderizado desde el server.
 export function CardShell({ envelope, venueName, logo, whatsappHref, children }: CardShellProps) {
   const [opened, setOpened] = useState(!envelope);
+  // `opened` cambia al tocar; `revealed`, cuando termina la salida del sobre y el
+  // contenido queda realmente a la vista (dispara las entradas del hero y del flotante).
+  const [revealed, setRevealed] = useState(!envelope);
   const contentRef = useRef<HTMLDivElement>(null);
   const focusOnOpen = useRef(false);
 
@@ -42,7 +46,7 @@ export function CardShell({ envelope, venueName, logo, whatsappHref, children }:
 
   return (
     <MotionConfig reducedMotion="user">
-      <AnimatePresence>
+      <AnimatePresence onExitComplete={() => setRevealed(true)}>
         {!opened ? (
           <Envelope key="envelope" venueName={venueName} logo={logo} onOpen={() => {
               focusOnOpen.current = true;
@@ -58,9 +62,9 @@ export function CardShell({ envelope, venueName, logo, whatsappHref, children }:
         inert={!opened}
         data-testid="card-content"
       >
-        {children}
+        <ContentRevealedContext value={revealed}>{children}</ContentRevealedContext>
       </div>
-      {opened ? <WhatsAppButton href={whatsappHref} variant="floating" /> : null}
+      {opened ? <FloatingWhatsApp href={whatsappHref} revealed={revealed} /> : null}
     </MotionConfig>
   );
 }
