@@ -31,4 +31,11 @@ describe("FloatingWhatsApp", () => {
     expect(screen.getByTestId("whatsapp-floating")).toBeInTheDocument();
     expect(screen.queryByTestId("whatsapp-ring")).not.toBeInTheDocument();
   });
+
+  it("hasta que el contenido se revela queda inerte (sin foco ni clicks a opacity 0)", () => {
+    const { rerender } = render(<FloatingWhatsApp href={href} revealed={false} />);
+    expect(screen.getByTestId("whatsapp-floating").closest("[inert]")).not.toBeNull();
+    rerender(<FloatingWhatsApp href={href} revealed />);
+    expect(screen.getByTestId("whatsapp-floating").closest("[inert]")).toBeNull();
+  });
 });

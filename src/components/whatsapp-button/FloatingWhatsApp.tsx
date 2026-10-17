@@ -20,6 +20,8 @@ export function FloatingWhatsApp({ href, revealed }: FloatingWhatsAppProps) {
       variants={floatingEnter}
       initial="hidden"
       animate={revealed ? "visible" : "hidden"}
+      // Monta al abrir pero queda en opacity 0 hasta que sale el sobre: sin foco ni clicks.
+      inert={!revealed}
     >
       {shouldAnimate ? (
         <motion.span

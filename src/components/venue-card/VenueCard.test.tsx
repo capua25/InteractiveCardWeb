@@ -1,4 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Venue } from "@/domain/venue";
 import { VenueCard } from "@/components/venue-card/VenueCard";
@@ -79,5 +81,32 @@ describe("VenueCard", () => {
     expect(container.style.getPropertyValue("--venue-primary")).toBe("#112233");
     expect(container.style.getPropertyValue("--venue-accent")).toBe("#445566");
     expect(container.style.getPropertyValue("--venue-font-heading")).toBe("Georgia, serif");
+  });
+
+  // Sin sobre no hay nada que tape el hero: tiene que salir visible desde el
+  // HTML del server (sin JS también), sin entrada animada.
+  it("con envelope: false el hero no arranca oculto (sin opacity 0 inline)", () => {
+    render(<VenueCard venue={minimalVenue} />);
+    const h1 = screen.getByRole("heading", { level: 1, name: "Salón Mínimo" });
+    expect(h1.parentElement?.style.opacity).not.toBe("0");
+    expect(h1.closest("[style*='opacity: 0']")).toBeNull();
+  });
+
+  it("con envelope: false el HTML del server no envuelve el h1 en opacity 0", () => {
+    const html = renderToString(<VenueCard venue={minimalVenue} />);
+    expect(html).toContain("<h1");
+    expect(html).not.toMatch(/opacity:\s*0[;"][^>]*>\s*<h1/);
+  });
+
+  it("con sobre: tras tocarlo, CTA del hero y flotante quedan inertes mientras el sobre sale", async () => {
+    render(<VenueCard venue={{ ...minimalVenue, envelope: true }} />);
+    await userEvent.click(screen.getByRole("button", { name: /Abrir la invitación/ }));
+    // El contenedor del contenido ya no es inerte: lo que bloquea es la capa oculta.
+    expect(screen.getByTestId("card-content")).not.toHaveAttribute("inert");
+    const h1 = screen.getByRole("heading", { level: 1, hidden: true, name: "Salón Mínimo" });
+    expect(h1.parentElement?.style.opacity).toBe("0");
+    const heroCta = within(h1.closest("header")!).getByRole("link", { hidden: true });
+    expect(heroCta.closest("[inert]")).not.toBeNull();
+    expect(screen.getByTestId("whatsapp-floating").closest("[inert]")).not.toBeNull();
   });
 });
