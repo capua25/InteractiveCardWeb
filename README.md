@@ -33,7 +33,17 @@ npm run test:e2e   # Playwright (build + start en :3100, emulando un Pixel 7)
 
 La primera vez: `npx playwright install chromium`.
 
+## Deploy en Vercel (demo)
+
+1. Importar el repo en [vercel.com/new](https://vercel.com/new) (Next se detecta solo, sin configuración extra).
+2. `NEXT_PUBLIC_SITE_URL` es opcional: si no se setea, se usa el dominio de producción de Vercel (`VERCEL_PROJECT_PRODUCTION_URL`). Setearla si se agrega un dominio propio. Ver `src/lib/site-url.ts`.
+3. Verificar la preview pegando el link en WhatsApp.
+
+> El plan Hobby es de uso no comercial. Para un cliente real, pasar a Pro o al deploy con Docker/VPS (abajo).
+
 ## Deploy con Docker (VPS)
+
+Alternativa para producción con cliente real.
 
 Next se genera con `output: "standalone"` y se empaqueta en una imagen Docker (Node 24 alpine, usuario no-root, puerto 3000).
 
