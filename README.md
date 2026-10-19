@@ -33,11 +33,19 @@ npm run test:e2e   # Playwright (build + start en :3100, emulando un Pixel 7)
 
 La primera vez: `npx playwright install chromium`.
 
-## Deploy en Vercel
+## Deploy con Docker (VPS)
 
-1. Importar el repo en Vercel (framework Next.js detectado automáticamente, sin configuración extra).
-   Requiere **Node >= 24.15** (jsdom 30.1.3 exige `^24.15.0` en la rama 24; con 24.14 npm avisa con `EBADENGINE`).
-2. Definir `NEXT_PUBLIC_SITE_URL` (p. ej. `https://tusalon.com.ar`) con el dominio público de la tarjeta.
-   `src/lib/site-url.ts` lee, en este orden, `NEXT_PUBLIC_SITE_URL`, `VERCEL_PROJECT_PRODUCTION_URL` (la define Vercel automáticamente) y, si ninguna existe, `http://localhost:3000`.
-   **Importante:** si ambas variables faltan en producción, las URLs absolutas de Open Graph (`og:image`) apuntan a `localhost` y la preview en WhatsApp no muestra la imagen.
-3. Verificar la preview pegando el link en WhatsApp.
+Next se genera con `output: "standalone"` y se empaqueta en una imagen Docker (Node 24 alpine, usuario no-root, puerto 3000).
+
+`NEXT_PUBLIC_SITE_URL` (p. ej. `https://tusalon.com.ar`, el dominio público de la tarjeta) se inlinea **en el build**, porque las páginas son SSG: se pasa como `--build-arg`, no al correr el contenedor. Si falta, el build falla (de lo contrario `og:image` apuntaría a `localhost` y la preview en WhatsApp no mostraría la imagen). Ver `src/lib/site-url.ts`.
+
+```bash
+docker build --build-arg NEXT_PUBLIC_SITE_URL=https://tusalon.com.ar -t interactivecard .
+docker run -d --name interactivecard -p 127.0.0.1:3000:3000 --restart unless-stopped interactivecard
+```
+
+Requiere **Node >= 24.15** para desarrollo local (jsdom 30.1.3 exige `^24.15.0` en la rama 24).
+
+> Pendiente: integración con Nginx (reverse proxy + TLS) y docker-compose; se documentan aparte.
+
+Verificar la preview pegando el link en WhatsApp.
