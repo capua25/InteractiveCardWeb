@@ -194,6 +194,117 @@ describe("createViewer", () => {
   });
 });
 
+describe("createViewer si el montaje tira", () => {
+  it("con un paso que tira (texturas) libera el renderer, quita el canvas y re-lanza", () => {
+    createTextures.mockImplementation(() => {
+      throw new Error("texturas");
+    });
+    expect(() => createViewer(container, scene, quality, { onContextLost, deps })).toThrow("texturas");
+    expect(container.querySelector("canvas")).toBeNull();
+    expect(renderer.dispose).toHaveBeenCalledTimes(1);
+    expect(renderer.forceContextLoss).toHaveBeenCalledTimes(1);
+    expect(env.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("si tira el build de la escena también libera las texturas", () => {
+    const textures = Object.fromEntries(KEYS.map((k) => [k, new THREE.Texture()])) as Textures;
+    const texDispose = vi.spyOn(textures.stone, "dispose");
+    createTextures.mockReturnValue(textures);
+    scene.build = () => {
+      throw new Error("build");
+    };
+    expect(() => createViewer(container, scene, quality, { onContextLost, deps })).toThrow("build");
+    expect(container.querySelector("canvas")).toBeNull();
+    expect(texDispose).toHaveBeenCalled();
+    expect(renderer.dispose).toHaveBeenCalledTimes(1);
+  });
+
+  it("si tira después de crear controles y observer, los desconecta", () => {
+    renderer.render.mockImplementation(() => {
+      throw new Error("render");
+    });
+    expect(() => createViewer(container, scene, quality, { onContextLost, deps })).toThrow("render");
+    expect(observer.disconnect).toHaveBeenCalled();
+    expect(container.querySelector("canvas")).toBeNull();
+    expect(renderer.forceContextLoss).toHaveBeenCalledTimes(1);
+  });
+
+  it("sin forceContextLoss en el renderer igual limpia", () => {
+    const r = renderer as Partial<ReturnType<typeof fakeRenderer>>;
+    delete r.forceContextLoss;
+    createTextures.mockImplementation(() => {
+      throw new Error("texturas");
+    });
+    expect(() => createViewer(container, scene, quality, { onContextLost, deps })).toThrow("texturas");
+    expect(container.querySelector("canvas")).toBeNull();
+    expect(renderer.dispose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("createViewer al cambiar el aspecto", () => {
+  const OUT_WIDE = [19, 10, 23];
+  // Vista angosta: ×1,5 desde el target (-1, 2.5, 0).
+  const OUT_NARROW = [29, 13.75, 34.5];
+  const expectPos = (pos: number[]) => {
+    const cam = lastRenderedCamera();
+    expect(cam.position.x).toBeCloseTo(pos[0], 4);
+    expect(cam.position.y).toBeCloseTo(pos[1], 4);
+    expect(cam.position.z).toBeCloseTo(pos[2], 4);
+  };
+  const resizeTo = (w: number, h: number) => {
+    setSize(container, w, h);
+    resizeCallback([], observer as unknown as ResizeObserver);
+  };
+
+  it("montado en un contenedor 0×0, el primer tamaño real recalcula la vista Afuera", () => {
+    setSize(container, 0, 0);
+    createViewer(container, scene, quality, { onContextLost, deps });
+    resizeTo(800, 600);
+    expectPos(OUT_WIDE);
+  });
+
+  it("rotar el celular en Afuera sin tocar la cámara recalcula la distancia", () => {
+    setSize(container, 400, 800);
+    createViewer(container, scene, quality, { onContextLost, deps });
+    expectPos(OUT_NARROW);
+    resizeTo(800, 400);
+    expectPos(OUT_WIDE);
+    resizeTo(400, 800);
+    expectPos(OUT_NARROW);
+  });
+
+  it("si el usuario movió la cámara, rotar no la pisa", () => {
+    setSize(container, 400, 800);
+    createViewer(container, scene, quality, { onContextLost, deps });
+    const canvas = container.querySelector("canvas")!;
+    // jsdom no tiene layout: el zoom al cursor necesita el rect del canvas.
+    vi.spyOn(canvas, "getBoundingClientRect").mockReturnValue(new DOMRect(0, 0, 400, 800));
+    canvas.dispatchEvent(new WheelEvent("wheel", { deltaY: 100, clientX: 200, clientY: 400, cancelable: true }));
+    const moved = lastRenderedCamera().position.clone();
+    expect(moved.distanceTo(new THREE.Vector3(...OUT_NARROW))).toBeGreaterThan(0.01);
+    resizeTo(800, 400);
+    expectPos(moved.toArray());
+  });
+
+  it("en Adentro rotar no cambia la pose", () => {
+    setSize(container, 400, 800);
+    const c = createViewer(container, scene, quality, { onContextLost, deps });
+    c.setView("in");
+    resizeTo(800, 400);
+    expectPos([-11.2, 1.75, 0]);
+  });
+
+  it("un resize sin cambio de aspecto no reubica la cámara", () => {
+    setSize(container, 400, 800);
+    const c = createViewer(container, scene, quality, { onContextLost, deps });
+    c.setView("out");
+    renderer.render.mockClear();
+    resizeTo(400, 800);
+    expect(renderer.render).toHaveBeenCalledTimes(1);
+    expectPos(OUT_NARROW);
+  });
+});
+
 describe("clampPan", () => {
   const bounds = { min: [-2, 0, -2], max: [2, 3, 2] } as const;
 
