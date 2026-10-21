@@ -27,13 +27,19 @@ export type BarbatosLayout = {
   gableWindows: { z: number; width: number; height: number; sill: number }[];
   plinth: { height: number; thickness: number; front: Segment[]; back: Segment[] };
   trussesX: number[];
+  roof: { gableOverhang: number; eaveOverhang: number };
   chimney: {
     x: number;
     width: number;
     depth: number;
     height: number;
     hearthX: number;
-    flue: { x: number; base: number; top: number; radius: number };
+    stack: { x: number; width: number; depth: number; height: number };
+    flue: { x: number; base: number; top: number; radius: number; capRadius: number };
+  };
+  acUnits: {
+    slab: { x: number; z: number; w: number; d: number; h: number };
+    units: { x: number; y: number; z: number; w: number; h: number; d: number }[];
   };
   carpet: { x0: number; x1: number; width: number };
   annex: { x: number; width: number; height: number; zFront: number; zBack: number };
@@ -166,13 +172,31 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   // Chimenea contra la cara interior del hastial derecho.
   const c = d.chimney;
   const chimneyX = hx - T - c.depth / 2;
+  // Bloque exterior: su cara interior es el plano del hastial.
+  const stackX = hx + c.stack.depth / 2;
+  const stackHeight = c.stack.heightRatio * d.hall.wallHeight;
   const chimney = {
     x: chimneyX,
     width: c.width,
     depth: c.depth,
     height: c.height,
     hearthX: hx - T - c.hearthFromInnerWall,
-    flue: { x: chimneyX, base: c.flue.base, top: d.hall.ridgeHeight + c.flue.aboveRidge, radius: c.flue.radius },
+    stack: { x: stackX, width: c.stack.width, depth: c.stack.depth, height: stackHeight },
+    flue: {
+      x: stackX + c.flue.offsetX,
+      base: stackHeight,
+      top: d.hall.ridgeHeight + c.flue.aboveRidge,
+      radius: c.flue.radius,
+      capRadius: c.flue.capRadius,
+    },
+  };
+
+  // Equipos de aire: losa pegada al zócalo del hastial +x, equipos apoyados encima.
+  const ac = d.acUnits;
+  const slabX = hx + d.plinth.overhang + ac.slab.w / 2;
+  const acUnits = {
+    slab: { x: slabX, z: ac.slab.z, w: ac.slab.w, d: ac.slab.d, h: ac.slab.h },
+    units: ac.z.map((z) => ({ x: slabX, y: ac.slab.h + ac.unit.h / 2, z, ...ac.unit })),
   };
 
   // Alfombra: desde el muro izquierdo interior hasta chimneyGap antes del frente de la chimenea.
@@ -277,7 +301,9 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     gableWindows,
     plinth,
     trussesX,
+    roof: { ...d.roof },
     chimney,
+    acUnits,
     carpet,
     annex,
     pergola,

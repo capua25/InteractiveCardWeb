@@ -40,13 +40,23 @@ export type BarbatosDimensions = {
   gableWindows: { width: number; offsetFromAxis: number };
   plinth: { height: number; thickness: number; overhang: number };
   trusses: { count: number; spacing: number };
-  // Contra el hastial derecho.
+  // Vuelo de los faldones de chapa en los hastiales y en los aleros.
+  roof: { gableOverhang: number; eaveOverhang: number };
+  // Hogar interior contra el hastial derecho; bloque exterior (`stack`, altura = heightRatio * muro) y
+  // caño que sube por fuera del hastial (`offsetX` desde el eje del bloque).
   chimney: {
     depth: number;
     height: number;
     width: number;
     hearthFromInnerWall: number;
-    flue: { radius: number; base: number; aboveRidge: number };
+    stack: { depth: number; width: number; heightRatio: number };
+    flue: { radius: number; capRadius: number; aboveRidge: number; offsetX: number };
+  };
+  // Losa de cemento contra el zócalo del hastial +x y equipos encima (z de cada uno).
+  acUnits: {
+    slab: { w: number; d: number; h: number; z: number };
+    unit: { w: number; h: number; d: number };
+    z: number[];
   };
   // Desde el muro izquierdo interior hasta `frontGap` antes del frente de la chimenea.
   carpet: { width: number; fromLeftWall: number; chimneyGap: number };
@@ -126,12 +136,19 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   gableWindows: { width: 1.4, offsetFromAxis: 3.2 },
   plinth: { height: 0.6, thickness: 0.42, overhang: 0.06 },
   trusses: { count: 5, spacing: 3.6 },
+  roof: { gableOverhang: 0.05, eaveOverhang: 0.25 },
   chimney: {
     depth: 1.2,
     height: 5.2,
     width: 2.8,
     hearthFromInnerWall: 1.22,
-    flue: { radius: 0.32, base: 5.6, aboveRidge: 1.8 },
+    stack: { depth: 0.5, width: 2.8, heightRatio: 0.75 },
+    flue: { radius: 0.22, capRadius: 0.28, aboveRidge: 1.9, offsetX: 0.03 },
+  },
+  acUnits: {
+    slab: { w: 0.8, d: 2.5, h: 0.1, z: -3.6 },
+    unit: { w: 0.3, h: 0.55, d: 0.8 },
+    z: [-4.3, -2.9],
   },
   carpet: { width: 1.8, fromLeftWall: 0.2, chimneyGap: 0.3 },
   annex: { width: 6, heightRatio: 1.1, setbackFromFront: 0 },

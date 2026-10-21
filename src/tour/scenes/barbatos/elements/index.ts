@@ -1,5 +1,6 @@
 import type { SceneElement } from "@/tour/types";
 import type { BarbatosLayout } from "../layout";
+import { acUnits } from "./ac-units";
 import { annex } from "./annex";
 import { annexRoof } from "./annex-roof";
 import { backWall } from "./back-wall";
@@ -29,6 +30,7 @@ export const ELEMENTS: readonly SceneElement<BarbatosLayout>[] = [
   plinth,
   floor,
   chimney,
+  acUnits,
   trusses,
   roof,
   annex,

@@ -15,7 +15,7 @@ describe("ELEMENTS de Barbato's", () => {
 
   it("registra los elementos del v6 en orden", () => {
     expect(ELEMENTS.map((e) => e.id)).toEqual([
-      "ground", "patio", "front-wall", "back-wall", "gables", "plinth", "floor", "chimney", "trusses",
+      "ground", "patio", "front-wall", "back-wall", "gables", "plinth", "floor", "chimney", "ac-units", "trusses",
       "roof", "annex", "annex-roof", "pergola", "gallery", "gallery-roof", "park", "garland", "tables",
     ]);
   });
@@ -40,17 +40,36 @@ describe("ELEMENTS de Barbato's", () => {
     expect(plain).toBe(0);
   });
 
-  it("el caño de la chimenea está en la x del bloque de piedra", () => {
-    const meshes: THREE.Mesh[] = [];
-    ELEMENTS.find((e) => e.id === "chimney")!.build(ctx).traverse((o) => {
-      if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh);
+  const meshesOf = (id: string) => {
+    const out: THREE.Mesh[] = [];
+    ELEMENTS.find((e) => e.id === id)!.build(ctx).traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh);
     });
-    const flue = meshes.filter((m) => m.material === ctx.materials("metal"));
-    expect(flue.length).toBeGreaterThan(0);
-    expect(
-      flue
-        .every((m) => Math.abs(m.position.x - BARBATOS_LAYOUT.chimney.flue.x) < 1e-6),
-    ).toBe(true);
+    return out;
+  };
+
+  it("el caño arranca sobre el bloque exterior", () => {
+    const { stack, flue } = BARBATOS_LAYOUT.chimney;
+    const meshes = meshesOf("chimney");
+    const metal = meshes.filter((m) => m.material === ctx.materials("metal"));
+    expect(metal.filter((m) => Math.abs(m.position.x - flue.x) < 1e-6).length).toBeGreaterThanOrEqual(2);
+    expect(meshes.some((m) => m.material === ctx.materials("stone") && Math.abs(m.position.x - stack.x) < 1e-6)).toBe(true);
+    expect(metal.every((m) => m.position.x >= BARBATOS_LAYOUT.hall.hx)).toBe(true);
+  });
+
+  it("ac-units arma 2 equipos sobre la losa", () => {
+    const meshes = meshesOf("ac-units");
+    expect(meshes.filter((m) => m.material === ctx.materials("acWhite"))).toHaveLength(2);
+    expect(meshes.filter((m) => m.material === ctx.materials("cement"))).toHaveLength(1);
+  });
+
+  it("los faldones vuelan 0.05 en los hastiales", () => {
+    const sheets = meshesOf("roof").filter((m) => m.material === ctx.materials("roof"));
+    expect(sheets).toHaveLength(2);
+    for (const m of sheets) {
+      const size = new THREE.Box3().setFromObject(m).getSize(new THREE.Vector3());
+      expect(size.x).toBeCloseTo(2 * BARBATOS_LAYOUT.hall.hx + 0.1, 4);
+    }
   });
 
   it("la galería sigue a postInset, postHeight y sconceHeight editados", () => {
