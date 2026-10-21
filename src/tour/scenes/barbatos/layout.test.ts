@@ -81,3 +81,13 @@ describe("anclaje: los elementos se mueven con su pared", () => {
     expect(W14.annex.zBack).toBe(W14.gallery.zRoofOuter);
   });
 });
+
+describe("medidas editables sin ventana a la izquierda de la puerta", () => {
+  it("no tira y los apliques del frente se calculan con lo que haya", () => {
+    const d = structuredClone(BARBATOS_DIMENSIONS);
+    d.frontWindows.centers = d.frontWindows.centers.filter((c) => c.from !== "front-left");
+    const L = computeLayout(d);
+    expect(L.frontWindows.map((w) => w.x)).toEqual([4, 7, 10]);
+    expect(L.frontSconces).toEqual([{ x: -1.85, y: 2.9 }, { x: 1.85, y: 2.9 }, { x: 5.5, y: 2.6 }, { x: 8.5, y: 2.6 }]);
+  });
+});

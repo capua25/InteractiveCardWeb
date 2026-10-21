@@ -98,8 +98,8 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   const frontSconces = [
     { x: -doorSconceX, y: d.frontSconces.doorHeight },
     { x: doorSconceX, y: d.frontSconces.doorHeight },
-    // a la izquierda de la ventana izquierda
-    { x: leftWin[0].x - d.frontSconces.leftOfLeftWindow, y: d.frontSconces.windowHeight },
+    // a la izquierda de la ventana izquierda (si las medidas no traen ninguna, no hay aplique)
+    ...leftWin.slice(0, 1).map((w) => ({ x: w.x - d.frontSconces.leftOfLeftWindow, y: d.frontSconces.windowHeight })),
     // en el punto medio entre ventanas derechas consecutivas
     ...rightWin.slice(1).map((w, i) => ({ x: (rightWin[i].x + w.x) / 2, y: d.frontSconces.windowHeight })),
   ];
