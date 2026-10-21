@@ -20,6 +20,9 @@ export type VenueLocation = {
 
 export type VenueSocials = { instagram?: string; facebook?: string };
 
+/** Escenas 3D disponibles. Cada una es código three.js en src/tour/scenes/<id>/. */
+export type TourSceneId = "barbatos";
+
 export type Venue = {
   slug: string;
   name: string;
@@ -36,6 +39,8 @@ export type Venue = {
   services?: VenueServices;
   location?: VenueLocation;
   socials?: VenueSocials;
+  /** Si existe, el hero muestra "Recorrer el salón" junto al WhatsApp. */
+  tour?: { scene: TourSceneId };
   /** ogImage: PNG/JPG 1200×630 (WhatsApp no muestra SVG). */
   seo: { title: string; description: string; ogImage: string };
 };
