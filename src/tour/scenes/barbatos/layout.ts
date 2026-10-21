@@ -54,7 +54,7 @@ export type BarbatosLayout = {
     rearPlinth: number;
   };
   pergola: { z: number; height: number; columnsX: number[] };
-  gallery: { zInner: number; zPosts: number; zRoofOuter: number; depth: number; postHeight: number; fasciaHeight: number; postsX: number[] };
+  gallery: { zInner: number; zPosts: number; zRoofOuter: number; depth: number; postHeight: number; fasciaHeight: number; postsX: number[]; curtains: { bays: Segment[]; z: number; topY: number; skirtHeight: number; rollRadius: number } };
   lot: {
     zBack: number;
     zFront: number;
@@ -221,14 +221,24 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
 
   // Galería trasera: medidas desde el fondo (-hz).
   const g = d.gallery;
+  const zPosts = -hz - g.depth - g.postInset;
+  const postsX = Array.from({ length: g.postCount }, (_, i) => -hx + (i + 1) * g.postSpacing);
   const gallery = {
     zInner: -hz,
-    zPosts: -hz - g.depth - g.postInset,
+    zPosts,
     zRoofOuter: -hz - g.depth - g.roofOverhang,
     depth: g.depth,
     postHeight: g.postHeight,
     fasciaHeight: g.fasciaHeight,
-    postsX: Array.from({ length: g.postCount }, (_, i) => -hx + (i + 1) * g.postSpacing),
+    postsX,
+    // Un tramo de cortina entre cada par de postes consecutivos (el primero arranca en la esquina -hx).
+    curtains: {
+      bays: postsX.map((x1, i) => ({ x0: i === 0 ? -hx : postsX[i - 1], x1 })),
+      z: zPosts - g.curtains.offset,
+      topY: g.postHeight - g.fasciaHeight,
+      skirtHeight: g.curtains.skirtHeight,
+      rollRadius: g.curtains.rollRadius,
+    },
   };
 
   // Anexo a la izquierda: retranqueado desde el frente, fondo anclado al borde exterior del techo de la galería.

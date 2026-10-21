@@ -9,6 +9,7 @@ import { floor } from "./floor";
 import { frontWall } from "./front-wall";
 import { gables } from "./gables";
 import { gallery } from "./gallery";
+import { galleryCurtains } from "./gallery-curtains";
 import { galleryRoof } from "./gallery-roof";
 import { garland } from "./garland";
 import { ground } from "./ground";
@@ -38,6 +39,7 @@ export const ELEMENTS: readonly SceneElement<BarbatosLayout>[] = [
   pergola,
   gallery,
   galleryRoof,
+  galleryCurtains,
   park,
   garland,
   tables,

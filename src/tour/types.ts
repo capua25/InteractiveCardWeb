@@ -31,6 +31,8 @@ export type BuildContext<L> = EngineContext & { layout: L };
 export type SceneElement<L> = {
   id: string;
   group?: "root" | "roof";
+  // Pieza animable por el controlador (aún sin uso en el motor).
+  animates?: "curtains";
   build(ctx: BuildContext<L>): Object3D;
 };
 

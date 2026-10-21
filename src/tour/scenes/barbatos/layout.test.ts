@@ -85,6 +85,17 @@ describe("layout de Barbato's con medidas reales", () => {
     expect(L0.pergola).toEqual({ z: 8, height: 3.4, columnsX: [expect.closeTo(-4.3, 4), expect.closeTo(1.3, 4)] });
     expect(L0.gallery).toMatchObject({ zInner: -5, zPosts: expect.closeTo(-10.1, 4), zRoofOuter: expect.closeTo(-10.35, 4), postHeight: 3.3, fasciaHeight: 0.3, postsX: [-6, -3, 0, 3, 6, 9] });
   });
+  it("6 tramos de cortina cubren la galería sin huecos", () => {
+    const { bays, z, topY, skirtHeight, rollRadius } = L0.gallery.curtains;
+    expect(bays).toHaveLength(6);
+    expect(bays[0].x0).toBe(-L0.hall.hx);
+    expect(bays.at(-1)!.x1).toBe(L0.hall.hx);
+    bays.slice(1).forEach((b, i) => expect(b.x0).toBe(bays[i].x1));
+    expect(z).toBeCloseTo(L0.gallery.zPosts - 0.08, 6);
+    expect(topY).toBeCloseTo(3.0, 6);
+    expect(skirtHeight).toBe(0.9);
+    expect(rollRadius).toBe(0.08);
+  });
   it("ventanas del anexo", () => {
     const h = L0.annex.height;
     expect(L0.annex.frontWindow).toEqual({ x: -12, width: 0.7, height: 1.5, sill: L0.frontWindows[0].sill });

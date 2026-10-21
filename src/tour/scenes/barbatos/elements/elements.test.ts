@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createTestEngineContext } from "@/tour/engine/test-context";
 import { BARBATOS_DIMENSIONS } from "../dimensions";
 import { BARBATOS_LAYOUT, computeLayout } from "../layout";
+import { CURTAIN_ROLLED_SCALE } from "@/tour/engine/curtains";
 import { ELEMENTS } from "./index";
 
 const ctx = { ...createTestEngineContext(), layout: BARBATOS_LAYOUT };
@@ -16,7 +17,7 @@ describe("ELEMENTS de Barbato's", () => {
   it("registra los elementos del v6 en orden", () => {
     expect(ELEMENTS.map((e) => e.id)).toEqual([
       "ground", "patio", "front-wall", "back-wall", "gables", "plinth", "floor", "chimney", "ac-units", "trusses",
-      "roof", "annex", "annex-roof", "pergola", "gallery", "gallery-roof", "park", "garland", "tables",
+      "roof", "annex", "annex-roof", "pergola", "gallery", "gallery-roof", "gallery-curtains", "park", "garland", "tables",
     ]);
   });
 
@@ -104,6 +105,54 @@ describe("ELEMENTS de Barbato's", () => {
     expect(posts.every((m) => Math.abs(size(m).y - 3.6) < 1e-5)).toBe(true);
     const [roof] = meshes("gallery-roof");
     expect(roof.position.y).toBeCloseTo(3.6 + 0.05, 6);
+  });
+
+  it("la viga de la galería tiene 0.3 de alto", () => {
+    const g = BARBATOS_LAYOUT.gallery;
+    const beam = meshesOf("gallery").find((m) => {
+      m.geometry.computeBoundingBox();
+      return m.material === ctx.materials("metal") && m.geometry.boundingBox!.getSize(new THREE.Vector3()).x > 17;
+    })!;
+    const size = beam.geometry.boundingBox!.getSize(new THREE.Vector3());
+    expect(size.y).toBeCloseTo(0.3, 6);
+    expect(size.z).toBeCloseTo(0.16, 6);
+    expect(beam.position.y).toBeCloseTo(g.postHeight - 0.15, 6);
+  });
+
+  it("hay un rollo de lona por tramo, sobre el nivel de la cortina", () => {
+    const { bays, z, topY, rollRadius } = BARBATOS_LAYOUT.gallery.curtains;
+    const rolls = meshesOf("gallery").filter((m) => m.material === ctx.materials("canvas"));
+    expect(rolls).toHaveLength(bays.length);
+    rolls.forEach((r, i) => {
+      expect(r.position.x).toBeCloseTo((bays[i].x0 + bays[i].x1) / 2, 6);
+      expect(r.position.y).toBeCloseTo(topY - rollRadius, 6);
+      expect(r.position.z).toBeCloseTo(z, 6);
+    });
+  });
+
+  it("las cortinas son 2 meshes (nylon y lona) y arrancan enrolladas", () => {
+    const obj = ELEMENTS.find((e) => e.id === "gallery-curtains")!.build(ctx);
+    const { topY, rollRadius, skirtHeight } = BARBATOS_LAYOUT.gallery.curtains;
+    expect(ELEMENTS.find((e) => e.id === "gallery-curtains")!.animates).toBe("curtains");
+    expect(obj.scale.y).toBe(CURTAIN_ROLLED_SCALE);
+    expect(obj.userData.noMerge).toBe(true);
+    expect(obj.position.y).toBeCloseTo(topY - rollRadius, 6);
+    const meshes: THREE.Mesh[] = [];
+    obj.traverse((o) => { if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh); });
+    expect(meshes).toHaveLength(2);
+    const nylon = meshes.filter((m) => m.material === ctx.materials("nylon"));
+    const canvas = meshes.filter((m) => m.material === ctx.materials("canvas"));
+    expect(nylon).toHaveLength(1);
+    expect(canvas).toHaveLength(1);
+    expect(meshes.every((m) => m.userData.noShadow === true)).toBe(true);
+    nylon[0].geometry.computeBoundingBox();
+    const bb = nylon[0].geometry.boundingBox!;
+    expect(bb.max.y).toBeCloseTo(0, 6);
+    expect(bb.min.y).toBeCloseTo(-(topY - rollRadius - skirtHeight), 6);
+    expect(bb.getSize(new THREE.Vector3()).x).toBeCloseTo(18 - 0.04, 4); // 6 tramos de (tramo - 0.04)
+    canvas[0].geometry.computeBoundingBox();
+    expect(canvas[0].geometry.boundingBox!.max.y).toBeCloseTo(-(topY - rollRadius - skirtHeight), 6);
+    expect(canvas[0].geometry.boundingBox!.min.y).toBeCloseTo(-(topY - rollRadius), 6);
   });
 
   describe("park y suelo", () => {

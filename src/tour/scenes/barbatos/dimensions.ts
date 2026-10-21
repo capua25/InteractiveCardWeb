@@ -81,6 +81,7 @@ export type BarbatosDimensions = {
     postCount: number; // postes desde la esquina izquierda, sin contar la esquina
     postHeight: number;
     fasciaHeight: number;
+    curtains: { skirtHeight: number; rollRadius: number; offset: number };
   };
   park: {
     garlandFromBack: number;
@@ -169,7 +170,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
     rearPlinthRatio: 0.2,
   },
   pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.8 },
-  gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3 },
+  gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3, curtains: { skirtHeight: 0.9, rollRadius: 0.08, offset: 0.08 } },
   park: {
     garlandFromBack: 11,
     garlandPolesX: [-9, -3, 3, 9],
