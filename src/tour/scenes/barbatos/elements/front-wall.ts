@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { SceneElement } from "@/tour/types";
 import type { BarbatosLayout } from "../layout";
+import { sconce } from "./sconce";
 
 // Muro del frente (+z): contorno con muesca de puerta, huecos de ventanas, marcos y apliques.
 export const frontWall: SceneElement<BarbatosLayout> = {
@@ -25,7 +26,7 @@ export const frontWall: SceneElement<BarbatosLayout> = {
     g.add(wall);
     for (const w of l.frontWindows) g.add(P.frame("z", w.x, hz - T / 2, w.sill, w.width, w.height, T));
     g.add(P.frame("z", d.x, hz - T / 2, d.sill, d.width, d.height, T, { door: true, rows: d.rows }));
-    for (const sc of l.frontSconces) g.add(P.box(0.18, 0.28, 0.12, "sconce", [sc.x, sc.y, hz + 0.06], { noShadow: true }));
+    for (const sc of l.frontSconces) g.add(sconce(P, [sc.x, sc.y, hz], "+z"));
     return g;
   },
 };

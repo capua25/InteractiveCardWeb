@@ -96,7 +96,9 @@ describe("ELEMENTS de Barbato's", () => {
     expect(floor.position.z + size(floor).z / 2).toBeCloseTo(layout.gallery.zInner, 5);
     const sconces = gallery.filter((m) => m.material === ctx.materials("sconce"));
     expect(sconces).toHaveLength(layout.backSconcesX.length);
-    expect(sconces.every((m) => m.position.y === 3.1)).toBe(true);
+    const bodies = gallery.filter((m) => m.material === ctx.materials("metal") && Math.abs(size(m).x - 0.1) < 1e-5 && Math.abs(size(m).y - 0.1) < 1e-5);
+    expect(bodies).toHaveLength(layout.backSconcesX.length);
+    expect(bodies.every((m) => m.position.y === 3.1)).toBe(true);
     const posts = gallery.filter((m) => m.material === ctx.materials("metal") && Math.abs(size(m).x - 0.12) < 1e-5);
     expect(posts).toHaveLength(layout.gallery.postsX.length);
     expect(posts.every((m) => Math.abs(size(m).y - 3.6) < 1e-5)).toBe(true);
@@ -156,6 +158,56 @@ describe("ELEMENTS de Barbato's", () => {
       expect(s.x).toBe(160);
       expect(s.y).toBe(160);
       expect(g.position.z).toBeCloseTo(l.centerZ, 5);
+    });
+  });
+
+  describe("frente: pérgola y apliques", () => {
+    const meshes = (id: string) => {
+      const out: THREE.Mesh[] = [];
+      ELEMENTS.find((e) => e.id === id)!.build(ctx).traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh);
+      });
+      return out;
+    };
+    const size = (m: THREE.Mesh) => {
+      m.geometry.computeBoundingBox();
+      return m.geometry.boundingBox!.getSize(new THREE.Vector3());
+    };
+    const near = (a: number, b: number) => Math.abs(a - b) < 1e-5;
+
+    it("la pérgola tiene 8 listones por columna a paso 0.09", () => {
+      const h = BARBATOS_LAYOUT.pergola.height;
+      const slats = meshes("pergola").filter((m) => {
+        const s = size(m);
+        return near(s.x, 0.05) && near(s.y, h) && near(s.z, 0.1);
+      });
+      expect(slats).toHaveLength(16);
+      for (const cx of BARBATOS_LAYOUT.pergola.columnsX) {
+        const xs = slats.map((m) => m.position.x).filter((x) => Math.abs(x - cx) < 0.5).sort((a, b) => a - b);
+        expect(xs).toHaveLength(8);
+        for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeCloseTo(0.09, 5);
+        expect((xs[0] + xs[7]) / 2).toBeCloseTo(cx, 5);
+      }
+    });
+
+    it("las lamas de la pérgola corren en z", () => {
+      const lamas = meshes("pergola").filter((m) => near(size(m).x, 0.03) && near(size(m).y, 0.1));
+      expect(lamas.length).toBeGreaterThan(10);
+      expect(lamas.every((m) => size(m).z > size(m).x)).toBe(true);
+      const xs = lamas.map((m) => m.position.x).sort((a, b) => a - b);
+      for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeCloseTo(0.12, 5);
+    });
+
+    it("los apliques del frente son cubos negros con emisor", () => {
+      const all = meshes("front-wall");
+      const bodies = all.filter((m) => m.material === ctx.materials("metal") && near(size(m).x, 0.1) && near(size(m).y, 0.1) && near(size(m).z, 0.1));
+      const emitters = all.filter((m) => m.material === ctx.materials("sconce"));
+      expect(bodies).toHaveLength(BARBATOS_LAYOUT.frontSconces.length);
+      expect(emitters).toHaveLength(BARBATOS_LAYOUT.frontSconces.length);
+      for (const sc of BARBATOS_LAYOUT.frontSconces) {
+        expect(bodies.some((m) => near(m.position.x, sc.x) && near(m.position.y, sc.y))).toBe(true);
+        expect(emitters.some((m) => near(m.position.x, sc.x) && m.position.y < sc.y && m.userData.noShadow === true)).toBe(true);
+      }
     });
   });
 });
