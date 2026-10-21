@@ -8,6 +8,7 @@ import { themeToCssVars } from "@/lib/theme";
 import { loadTourScene } from "@/tour/registry";
 import type { TourController, TourView } from "@/tour/types";
 import { hasWebGL } from "@/tour/webgl";
+import { TourLoader } from "./TourLoader";
 
 // Un back() pedido por un desmontaje que todavía no corrió (ver efecto de historial).
 let backPending = false;
@@ -183,9 +184,7 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
           <div data-testid="tour-canvas-host" aria-hidden="true" className="absolute inset-0" style={{ touchAction: "none" }} ref={hostRef} />
         ) : null}
         {status === "loading" ? (
-          <p role="status" className="absolute inset-0 flex items-center justify-center text-white/80">
-            Cargando el recorrido…
-          </p>
+          <TourLoader />
         ) : null}
         {status === "unsupported" ? (
           <p className="absolute inset-0 flex items-center justify-center px-6 text-center">

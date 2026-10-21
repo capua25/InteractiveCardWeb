@@ -53,6 +53,8 @@ describe("TourOverlay", () => {
     loadTourSceneMock.mockReturnValue(new Promise(() => {}));
     renderOverlay();
     expect(screen.getByRole("status")).toHaveTextContent("Cargando el recorrido…");
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByTestId("tour-loader")).toBeInTheDocument();
     expect(screen.getByText("Girar: arrastrá · Zoom: pellizcá · Mover: dos dedos")).toBeInTheDocument();
     // Ruling 14: sin escena montada no hay cámara que mover.
     expect(screen.queryByRole("button", { name: "Afuera" })).not.toBeInTheDocument();
