@@ -42,6 +42,25 @@ describe("ELEMENTS de Barbato's", () => {
     expect(plain).toBe(0);
   });
 
+  it("patio: pedregullo plano con el contorno curvo, acostado a 5 cm y con UV en metros / 2.5", () => {
+    const obj = ELEMENTS.find((e) => e.id === "patio")!.build(ctx);
+    const gravel = obj.children.find((o) => (o as THREE.Mesh).material === ctx.materials("gravel")) as THREE.Mesh;
+    expect(gravel.geometry).toBeInstanceOf(THREE.ShapeGeometry);
+    expect(gravel.position.y).toBeCloseTo(0.05, 6);
+    expect(gravel.rotation.x).toBeCloseTo(-Math.PI / 2, 6);
+    gravel.updateMatrixWorld();
+    const box = new THREE.Box3().setFromObject(gravel);
+    const xs = BARBATOS_LAYOUT.forecourt.outline.map((p) => p.x);
+    const zs = BARBATOS_LAYOUT.forecourt.outline.map((p) => p.z);
+    expect(box.min.x).toBeCloseTo(Math.min(...xs), 4);
+    expect(box.max.x).toBeCloseTo(Math.max(...xs), 4);
+    expect(box.min.z).toBeCloseTo(Math.min(...zs), 4);
+    expect(box.max.z).toBeCloseTo(Math.max(...zs), 4);
+    const pos = gravel.geometry.attributes.position;
+    const uv = gravel.geometry.attributes.uv;
+    for (let i = 0; i < pos.count; i += 7) expect(uv.getX(i)).toBeCloseTo(pos.getX(i) / 2.5, 6);
+  });
+
   it("forecourt: 3 InstancedMesh (piedras, matas, flores) y ningún mesh suelto", () => {
     const obj = ELEMENTS.find((e) => e.id === "forecourt")!.build(ctx);
     const instanced: THREE.InstancedMesh[] = [];
@@ -51,9 +70,9 @@ describe("ELEMENTS de Barbato's", () => {
       else if ((o as THREE.Mesh).isMesh) plain++;
     });
     expect(instanced.map((m) => [m.material, m.count])).toEqual([
-      [ctx.materials("gabion"), 25],
-      [ctx.materials("lavender"), 13],
-      [ctx.materials("lavenderFlower"), 13],
+      [ctx.materials("gabion"), BARBATOS_LAYOUT.forecourt.border.length],
+      [ctx.materials("lavender"), BARBATOS_LAYOUT.forecourt.lavender.length],
+      [ctx.materials("lavenderFlower"), BARBATOS_LAYOUT.forecourt.lavender.length],
     ]);
     expect(plain).toBe(0);
   });

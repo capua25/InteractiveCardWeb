@@ -7,6 +7,7 @@ export type { Bounds, Vec3 };
 export type Opening = { x: number; width: number; height: number; sill: number; rows?: number };
 export type Segment = { x0: number; x1: number };
 export type TableSpot = { x: number; z: number; kind: "round" | "rect" };
+export type P2 = { x: number; z: number };
 
 export type BarbatosLayout = {
   hall: {
@@ -82,8 +83,8 @@ export type BarbatosLayout = {
     background: { seed: number; count: number; minHeight: number; maxHeight: number };
   };
   firePit: { x: number; z: number; ringRadius: number; ringHeight: number; basketRadius: number; sandRadius: number; sandVertices: { x: number; z: number }[] };
-  patio: { x: number; z: number; width: number; depth: number };
-  forecourt: { border: { x: number; z: number; size: number }[]; lavender: { x: number; z: number }[] };
+  // `outline`: polígono cerrado del pedregullo (x, z), denso; arranca en la esquina -x sobre el frente del edificio.
+  forecourt: { outline: P2[]; border: { x: number; z: number; size: number }[]; lavender: P2[] };
   tables: TableSpot[];
   pointLights: Vec3[];
   targetBounds: Bounds;
@@ -115,6 +116,43 @@ export function hexagonVertices(cx: number, cz: number, r: number): { x: number;
     const theta = (k * Math.PI) / 3;
     return { x: cx + r * Math.cos(theta), z: cz - r * Math.sin(theta) };
   });
+}
+
+const CURVE_STEPS = 24;
+
+/** Bézier cúbica muestreada en `CURVE_STEPS` tramos, sin el punto inicial (para encadenar tramos). */
+export function cubicPoints(a: P2, b: P2, c: P2, d: P2, steps = CURVE_STEPS): P2[] {
+  const at = (t: number, p: number, q: number, r: number, s: number) =>
+    (1 - t) ** 3 * p + 3 * (1 - t) ** 2 * t * q + 3 * (1 - t) * t * t * r + t ** 3 * s;
+  return Array.from({ length: steps }, (_, i) => {
+    const t = (i + 1) / steps;
+    return { x: at(t, a.x, b.x, c.x, d.x), z: at(t, a.z, b.z, c.z, d.z) };
+  });
+}
+
+/**
+ * Puntos cada ~`spacing` (paso exacto = largo útil / tramos) sobre la polilínea abierta `pts`, dejando libres
+ * `trimStart` y `trimEnd` de largo en cada punta. Devuelve posición y tangente unitaria.
+ */
+export function alongPolyline(pts: P2[], spacing: number, trimStart: number, trimEnd: number): { p: P2; t: P2 }[] {
+  const cum = [0];
+  for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i].x - pts[i - 1].x, pts[i].z - pts[i - 1].z));
+  const total = cum[cum.length - 1];
+  const usable = total - trimStart - trimEnd;
+  if (usable < 0) return [];
+  const n = Math.max(1, Math.round(usable / spacing));
+  const out: { p: P2; t: P2 }[] = [];
+  let k = 1;
+  for (let i = 0; i <= n; i++) {
+    const s = trimStart + (usable * i) / n;
+    while (k < pts.length - 1 && cum[k] < s) k++;
+    const a = pts[k - 1];
+    const b = pts[k];
+    const len = cum[k] - cum[k - 1] || 1;
+    const f = (s - cum[k - 1]) / len;
+    out.push({ p: { x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f }, t: { x: (b.x - a.x) / len, z: (b.z - a.z) / len } });
+  }
+  return out;
 }
 
 const centered = (i: number, count: number, step: number) => (i - (count - 1) / 2) * step;
@@ -349,30 +387,59 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   const gl = d.garland;
   const garland = { poles: firePit.sandVertices, poleHeight: gl.poleHeight, hangY: gl.poleHeight - gl.hangBelowTop, sag: gl.sag, bulbSpacing: gl.bulbSpacing };
 
-  // Pedregullo desde el frente.
-  const patio = {
-    x: d.patio.xOffset,
-    z: hz + d.patio.depth / 2,
-    width: d.patio.width,
-    depth: d.patio.depth,
-  };
-
-  // Borde de piedras: Bézier cuadrática desde la esquina delantera del lado `side` del pedregullo, abombada hacia
-  // afuera y cerrando hacia adentro al fondo; lavandas en cada `lavenderEvery`-ésima piedra, corridas hacia afuera.
+  // Pedregullo del frente (ver `dimensions.forecourt`): contorno anclado al anexo, a la entrada del lote y al extremo
+  // +x del salón. Tramos encadenados: lado -x → curva al pilar izquierdo │ entrada │ curva desde el pilar derecho →
+  // borde delantero → esquina redonda +x → vuelta al frente del salón; cierra por el frente del edificio.
   const fc = d.forecourt;
-  const edgeX = patio.x + (fc.side * patio.width) / 2;
-  const bez = (t: number, a: number, b: number, c: number) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * c;
+  const xL = annex.x - annex.width / 2 - fc.leftFromAnnex;
+  const zF = hz + fc.depth;
+  const xR = hx + fc.pastHall;
+  const { x0: gx0, x1: gx1 } = lot.entrance;
+  const zW = lot.zFront;
+  const zOut = zW + lt.wallThickness / 2; // el pedregullo pasa la entrada hasta la cara exterior del muro
+  const drive = (zW - zF) / 2;
+  const leftRun: P2[] = [
+    { x: xL, z: hz },
+    { x: xL, z: zF - fc.driveBend },
+    ...cubicPoints({ x: xL, z: zF - fc.driveBend }, { x: xL, z: zF }, { x: gx0, z: zW - drive }, { x: gx0, z: zW }),
+  ];
+  const frontStart = { x: gx1 + fc.driveTurn, z: zF };
+  const frontEnd = { x: hx, z: zF - fc.frontRecede };
+  const cornerMid = { x: xR, z: (hz + frontEnd.z) / 2 };
+  const reach = 0.6 * fc.pastHall;
+  const bend = 0.3 * (frontEnd.z - hz);
+  const driveCurve = cubicPoints({ x: gx1, z: zW }, { x: gx1, z: zW - drive }, { x: gx1 + 0.4 * fc.driveTurn, z: zF }, frontStart);
+  const frontEdge = cubicPoints(
+    frontStart,
+    { x: frontStart.x + (frontEnd.x - frontStart.x) / 3, z: frontStart.z + fc.frontBow },
+    { x: frontStart.x + (2 * (frontEnd.x - frontStart.x)) / 3, z: frontEnd.z + fc.frontBow },
+    frontEnd,
+  );
+  const corner = [
+    ...cubicPoints(frontEnd, { x: hx + reach, z: frontEnd.z }, { x: xR, z: frontEnd.z - bend }, cornerMid),
+    ...cubicPoints(cornerMid, { x: xR, z: hz + bend }, { x: hx + reach, z: hz }, { x: hx, z: hz }),
+  ];
+  const rightRun: P2[] = [{ x: gx1, z: zW }, ...driveCurve, ...frontEdge, ...corner];
+  const outline: P2[] = [
+    ...leftRun,
+    { x: gx0, z: zOut },
+    { x: gx1, z: zOut },
+    ...rightRun,
+  ];
+  // Piedras sobre el contorno (sin el frente del edificio ni la entrada); tamaño sorteado con semilla fija.
   const R = rng(FORECOURT_SEED);
-  const border = Array.from({ length: fc.stones }, (_, i) => {
-    const t = fc.stones > 1 ? i / (fc.stones - 1) : 0;
-    return {
-      x: bez(t, edgeX, edgeX + fc.side * 1.5, edgeX - fc.side * 2),
-      z: bez(t, hz + 0.5, hz + patio.depth / 2, hz + patio.depth - 0.5),
-      size: fc.stoneSize[0] + (fc.stoneSize[1] - fc.stoneSize[0]) * R(),
-    };
+  const BUILDING_CLEAR = 0.4;
+  const border = [
+    ...alongPolyline(leftRun, fc.stoneSpacing, BUILDING_CLEAR, fc.gapClear),
+    ...alongPolyline(rightRun, fc.stoneSpacing, fc.gapClear, BUILDING_CLEAR),
+  ].map(({ p }) => ({ x: p.x, z: p.z, size: fc.stoneSize[0] + (fc.stoneSize[1] - fc.stoneSize[0]) * R() }));
+  // Lavandas: paralelas al borde delantero, corridas hacia afuera (normal con z > 0), sin las puntas curvas.
+  const lavender = alongPolyline([frontStart, ...frontEdge], fc.lavenderSpacing, fc.lavenderSpacing / 2, fc.lavenderSpacing / 2).map(({ p, t }) => {
+    const nz = Math.abs(t.x);
+    const nx = -Math.sign(t.x) * t.z;
+    return { x: p.x + nx * fc.lavenderOffset, z: p.z + nz * fc.lavenderOffset };
   });
-  const lavender = border.filter((_, i) => i % fc.lavenderEvery === 0).map((b) => ({ x: b.x + fc.side * fc.lavenderOffset, z: b.z }));
-  const forecourt = { border, lavender };
+  const forecourt = { outline, border, lavender };
 
   // Mesas: filas desde el muro izquierdo exterior, a fromLongWall de cada muro largo; frente primero.
   const tables: TableSpot[] = [];
@@ -421,7 +488,6 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     park: { garland },
     firePit,
     vegetation,
-    patio,
     forecourt,
     tables,
     pointLights,

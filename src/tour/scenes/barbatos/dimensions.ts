@@ -103,11 +103,27 @@ export type BarbatosDimensions = {
   // Fogón sobre arena hexagonal: `fromHallLeft` desde el borde -x del salón (cruce galería/anexo; 0 = justo ahí) y `fromBackWall` desde el muro del fondo; `sandRadius` es el
   // circunradio (centro→vértice) del hexágono, alineado con los 6 postes de la guirnalda.
   firePit: { fromHallLeft: number; fromBackWall: number; ringDiameter: number; ringHeight: number; basketDiameter: number; sandRadius: number };
-  // Pedregullo desde el frente.
-  patio: { width: number; depth: number; xOffset: number };
-  // Borde de piedras en curva sobre el lado `side` del pedregullo (+1 = lado de la chimenea, -1 = opuesto) y lavandas
-  // en cada `lavenderEvery`-ésima piedra, corridas `lavenderOffset` hacia afuera del patio.
-  forecourt: { side: 1 | -1; stones: number; stoneSize: [number, number]; lavenderEvery: number; lavenderOffset: number };
+  // Pedregullo del frente: contorno curvo anclado al edificio y a la entrada del lote. Borde -x a `leftFromAnnex`
+  // del lado -x del anexo, recto hasta `driveBend` antes del frente del pedregullo y curvando hasta el pilar izquierdo;
+  // desde el pilar derecho dobla (`driveTurn` en x) hasta el frente del pedregullo, a `depth` del frente del salón;
+  // el frente retrocede `frontRecede` hacia +x (abombado `frontBow`) y cierra con una esquina redonda que sale
+  // `pastHall` más allá del hastial +x y vuelve al frente del salón en su extremo +x.
+  // Piedras sueltas cada `stoneSpacing` por todo el contorno salvo el edificio y la entrada (`gapClear` libre junto a
+  // cada pilar); lavandas cada `lavenderSpacing` sobre el borde delantero, corridas `lavenderOffset` hacia afuera.
+  forecourt: {
+    leftFromAnnex: number;
+    depth: number;
+    driveBend: number;
+    driveTurn: number;
+    frontRecede: number;
+    frontBow: number;
+    pastHall: number;
+    stoneSpacing: number;
+    stoneSize: [number, number];
+    gapClear: number;
+    lavenderSpacing: number;
+    lavenderOffset: number;
+  };
   // Filas desde el muro izquierdo exterior; mesas a `fromLongWall` de cada muro largo.
   tables: { rowsFromLeftWall: number[]; fromLongWall: number };
   pointLights: {
@@ -204,8 +220,20 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   },
   garland: { poleHeight: 2.8, hangBelowTop: 0.05, sag: 0.5, bulbSpacing: 0.375 },
   firePit: { fromHallLeft: 0, fromBackWall: 7, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 5 },
-  patio: { width: 30, depth: 10, xOffset: -2 },
-  forecourt: { side: 1, stones: 25, stoneSize: [0.6, 0.9], lavenderEvery: 2, lavenderOffset: 0.9 },
+  forecourt: {
+    leftFromAnnex: 2,
+    depth: 10,
+    driveBend: 2,
+    driveTurn: 4.5,
+    frontRecede: 0.6,
+    frontBow: 0.25,
+    pastHall: 3,
+    stoneSpacing: 0.45,
+    stoneSize: [0.6, 0.9],
+    gapClear: 0.8,
+    lavenderSpacing: 0.9,
+    lavenderOffset: 0.9,
+  },
   tables: { rowsFromLeftWall: [2.5, 5.5, 8.5, 11.5, 14.5], fromLongWall: 2.6 },
   pointLights: {
     frontAhead: 0.8,

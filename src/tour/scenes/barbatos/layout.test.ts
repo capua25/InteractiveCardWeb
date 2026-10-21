@@ -6,38 +6,96 @@ import { treeCrowns } from "./elements/vegetation";
 const L0 = BARBATOS_LAYOUT;
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 4);
 
-describe("borde de piedras del patio", () => {
-  const { hz } = L0.hall;
-  const edge = (side: 1 | -1) => L0.patio.x + (side * L0.patio.width) / 2;
-  it("25 piedras de borde en el lado de la chimenea dentro del lote", () => {
-    const { border, lavender } = L0.forecourt;
-    expect(border).toHaveLength(25);
-    expect(lavender).toHaveLength(13);
+// Punto dentro de polígono (par-impar) y distancia mínima a una polilínea.
+const inside = (p: { x: number; z: number }, poly: { x: number; z: number }[]) => {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const a = poly[i];
+    const b = poly[j];
+    if (a.z > p.z !== b.z > p.z && p.x < ((b.x - a.x) * (p.z - a.z)) / (b.z - a.z) + a.x) c = !c;
+  }
+  return c;
+};
+const distToPolyline = (p: { x: number; z: number }, pts: { x: number; z: number }[]) => {
+  let best = Infinity;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
+    const dx = b.x - a.x;
+    const dz = b.z - a.z;
+    const t = Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / (dx * dx + dz * dz || 1)));
+    best = Math.min(best, Math.hypot(p.x - (a.x + t * dx), p.z - (a.z + t * dz)));
+  }
+  return best;
+};
+
+describe("pedregullo curvo del frente", () => {
+  const check = (L: BarbatosLayout) => {
+    const { hx, hz } = L.hall;
+    const { outline, border, lavender } = L.forecourt;
+    const { x0, x1 } = L.lot.entrance;
+    const zW = L.lot.zFront;
+    const closed = [...outline, outline[0]];
+    // pasa por la entrada y toca la cara interior de ambos pilares
+    expect(outline.some((p) => Math.abs(p.x - x0) < 1e-9 && Math.abs(p.z - zW) < 1e-9)).toBe(true);
+    expect(outline.some((p) => Math.abs(p.x - x1) < 1e-9 && Math.abs(p.z - zW) < 1e-9)).toBe(true);
+    expect(inside({ x: (x0 + x1) / 2, z: zW - 0.05 }, outline)).toBe(true);
+    // arranca en el frente del edificio y no se mete detrás de él
+    for (const p of outline) expect(p.z).toBeGreaterThanOrEqual(hz - 1e-9);
+    expect(outline.filter((p) => Math.abs(p.z - hz) < 1e-9).map((p) => p.x).sort((a, b) => a - b)).toEqual([L.annex.x - L.annex.width / 2 - 2, hx]);
+    // piedras sobre el contorno, fuera de la entrada y del edificio, dentro del lote
+    expect(border.length).toBeGreaterThan(60);
     for (const s of border) {
-      expect(s.x).toBeLessThan(L0.lot.halfWidth);
-      expect(s.x).toBeGreaterThan(edge(1) - 2.1);
-      expect(s.z).toBeGreaterThanOrEqual(hz);
-      expect(s.z).toBeLessThanOrEqual(L0.lot.zFront);
+      expect(distToPolyline(s, closed)).toBeLessThan(0.02);
+      // ninguna contra el edificio (anexo + salón, de su borde -x al hastial +x)
+      if (s.x > L.annex.x - L.annex.width / 2 - 0.3 && s.x < hx + 0.3) expect(s.z).toBeGreaterThan(hz + 0.3);
+      expect(s.z).toBeGreaterThan(hz);
+      expect(s.z).toBeLessThan(zW - 0.5);
+      expect(Math.abs(s.x)).toBeLessThan(L.lot.halfWidth);
       expect(s.size).toBeGreaterThanOrEqual(0.6);
       expect(s.size).toBeLessThanOrEqual(0.9);
     }
-  });
-  it("nada bloquea la entrada abierta del frente", () => {
-    const { x0, x1 } = L0.lot.entrance;
-    for (const s of [...L0.forecourt.border, ...L0.forecourt.lavender]) expect(s.x < x0 || s.x > x1).toBe(true);
-  });
-  it("side = -1 espeja el borde hacia el lado opuesto", () => {
-    const L = computeLayout({ ...BARBATOS_DIMENSIONS, forecourt: { ...BARBATOS_DIMENSIONS.forecourt, side: -1 } });
-    const { border, lavender } = L.forecourt;
-    expect(border).toHaveLength(25);
-    for (const s of border) {
-      expect(s.x).toBeGreaterThan(-L.lot.halfWidth);
-      expect(s.x).toBeLessThan(edge(-1) + 2.1);
+    // ninguna piedra tapa la entrada: a lo ancho del hueco todo queda a más de medio metro del muro
+    for (const s of border) if (s.x > x0 && s.x < x1) expect(zW - s.z).toBeGreaterThan(0.5);
+    // separación pareja: vecinas entre 0.3 y 0.6 m
+    for (let i = 1; i < border.length; i++) {
+      const d = Math.hypot(border[i].x - border[i - 1].x, border[i].z - border[i - 1].z);
+      if (d < 2) expect(d).toBeGreaterThan(0.3);
+      if (d < 2) expect(d).toBeLessThan(0.6);
     }
-    close(border[0].x, edge(-1));
-    close(lavender[0].x, edge(-1) - 0.9);
-    close(L0.forecourt.border[0].x, edge(1));
-    close(L0.forecourt.lavender[0].x, edge(1) + 0.9);
+    // lavandas fuera del pedregullo, delante de su borde, entre la entrada y el extremo del salón, dentro del lote
+    expect(lavender.length).toBeGreaterThan(10);
+    for (const p of lavender) {
+      expect(inside(p, outline)).toBe(false);
+      expect(distToPolyline(p, closed)).toBeGreaterThan(0.7);
+      expect(p.z).toBeGreaterThan(hz + 8);
+      expect(p.z).toBeLessThan(zW - 0.5);
+      expect(p.x).toBeGreaterThan(x1);
+      expect(p.x).toBeLessThan(hx);
+    }
+    return { outline, border, lavender };
+  };
+
+  it("contorno por la entrada, piedras en el borde y lavandas delante (medidas reales)", () => {
+    const { outline, border, lavender } = check(L0);
+    const xs = outline.map((p) => p.x);
+    close(Math.min(...xs), -17);
+    close(Math.max(...xs), L0.hall.hx + 3); // la esquina redonda sale 3 m más allá del hastial +x, como en el croquis
+    close(Math.max(...outline.map((p) => p.z)), L0.lot.zFront + L0.lot.wallThickness / 2);
+    expect(border).toHaveLength(98);
+    expect(lavender).toHaveLength(16);
+  });
+
+  it("sigue a las anclas cuando cambian las medidas (anexo, entrada, salón)", () => {
+    const D = BARBATOS_DIMENSIONS;
+    const L = computeLayout({
+      ...D,
+      hall: { ...D.hall, length: 20 },
+      lot: { ...D.lot, entrance: { width: 5, centerFromAnnex: 0.5 } },
+      forecourt: { ...D.forecourt, pastHall: 2 },
+    });
+    const { outline } = check(L);
+    close(Math.max(...outline.map((p) => p.x)), 12);
   });
 });
 
@@ -179,7 +237,6 @@ describe("layout de Barbato's con medidas reales", () => {
   it("el lote ya no cuelga el muro de park", () => { expect("wall" in L0.park).toBe(false); });
   it("parque, patio, mesas y luces", () => {
     expect("trees" in L0.park).toBe(false);
-    expect(L0.patio).toEqual({ x: -2, z: 10, width: 30, depth: 10 });
     expect(L0.tables.slice(0, 4).map((t) => [t.z, t.kind])).toEqual([[2.4, "round"], [-2.4, "rect"], [2.4, "rect"], [-2.4, "round"]]);
     expect(L0.pointLights).toEqual([[expect.closeTo(-1.5, 4), 2.6, 5.8], [-4, 3.2, 0], [4, 3.2, 0], [expect.closeTo(7.2, 4), 0.9, 0], [0, 2.6, -7]]);
   });
