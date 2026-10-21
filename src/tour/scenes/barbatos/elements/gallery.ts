@@ -20,6 +20,14 @@ export const gallery: SceneElement<BarbatosLayout> = {
       roll.rotation.z = Math.PI / 2;
       g.add(roll);
     }
+    // Viga del extremo +x (a lo largo de z) de la que cuelga el rollo del cierre norte.
+    const endLen = zInner - zPosts;
+    g.add(P.box(0.16, fasciaHeight, endLen, "metal", [hx, postHeight - fasciaHeight / 2, (zInner + zPosts) / 2]));
+    for (const bay of curtains.end.bays) {
+      const roll = P.cyl(rollRadius, bay.z0 - bay.z1, "canvas", [curtains.end.x, topY - rollRadius, (bay.z0 + bay.z1) / 2]);
+      roll.rotation.x = Math.PI / 2;
+      g.add(roll);
+    }
     for (const x of l.backSconcesX) g.add(sconce(P, [x, l.backSconceY, zInner], "-z"));
     return g;
   },

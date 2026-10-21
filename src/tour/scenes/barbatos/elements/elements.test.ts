@@ -161,7 +161,7 @@ describe("ELEMENTS de Barbato's", () => {
 
   it("hay un rollo de lona por tramo, sobre el nivel de la cortina", () => {
     const { bays, z, topY, rollRadius } = BARBATOS_LAYOUT.gallery.curtains;
-    const rolls = meshesOf("gallery").filter((m) => m.material === ctx.materials("canvas"));
+    const rolls = meshesOf("gallery").filter((m) => m.material === ctx.materials("canvas") && m.rotation.x === 0);
     expect(rolls).toHaveLength(bays.length);
     rolls.forEach((r, i) => {
       expect(r.position.x).toBeCloseTo((bays[i].x0 + bays[i].x1) / 2, 6);
@@ -189,10 +189,35 @@ describe("ELEMENTS de Barbato's", () => {
     const bb = nylon[0].geometry.boundingBox!;
     expect(bb.max.y).toBeCloseTo(0, 6);
     expect(bb.min.y).toBeCloseTo(-(topY - rollRadius - skirtHeight), 6);
-    expect(bb.getSize(new THREE.Vector3()).x).toBeCloseTo(18 - 0.04, 4); // 6 tramos de (tramo - 0.04)
+    expect(bb.max.x).toBeCloseTo(BARBATOS_LAYOUT.gallery.curtains.end.x, 6); // 6 tramos largos + cierre +x
+    expect(bb.min.x).toBeCloseTo(-9 + 0.02, 6);
     canvas[0].geometry.computeBoundingBox();
     expect(canvas[0].geometry.boundingBox!.max.y).toBeCloseTo(-(topY - rollRadius - skirtHeight), 6);
     expect(canvas[0].geometry.boundingBox!.min.y).toBeCloseTo(-(topY - rollRadius), 6);
+  });
+
+  it("el cierre norte (+x) cuelga de una viga y sus rollos; no hay nada en el extremo -x", () => {
+    const { end, topY, rollRadius } = BARBATOS_LAYOUT.gallery.curtains;
+    const { hx } = BARBATOS_LAYOUT.hall;
+    const g = BARBATOS_LAYOUT.gallery;
+    const rolls = meshesOf("gallery").filter((m) => m.material === ctx.materials("canvas") && m.rotation.x !== 0);
+    expect(rolls).toHaveLength(end.bays.length);
+    rolls.forEach((r) => { expect(r.position.x).toBeCloseTo(end.x, 6); expect(r.position.y).toBeCloseTo(topY - rollRadius, 6); });
+    const beam = meshesOf("gallery").find((m) => Math.abs(m.position.x - hx) < 1e-6 && m.position.y > g.postHeight - 0.5)!;
+    expect(beam).toBeDefined();
+    const obj = ELEMENTS.find((e) => e.id === "gallery-curtains")!.build(ctx);
+    const nylon = (() => { let n!: THREE.Mesh; obj.traverse((o) => { if ((o as THREE.Mesh).material === ctx.materials("nylon")) n = o as THREE.Mesh; }); return n; })();
+    const pos = nylon.geometry.getAttribute("position");
+    let endMin = Infinity, endMax = -Infinity, xMin = Infinity, xMax = -Infinity;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      if (Math.abs(x - end.x) < 1e-6) { endMin = Math.min(endMin, pos.getZ(i)); endMax = Math.max(endMax, pos.getZ(i)); }
+      xMin = Math.min(xMin, x); xMax = Math.max(xMax, x);
+    }
+    expect(endMax).toBeCloseTo(-BARBATOS_LAYOUT.hall.hz - 0.02, 2); // contra el muro del fondo del salón
+    expect(endMin).toBeCloseTo(BARBATOS_LAYOUT.gallery.curtains.z + 0.02, 2); // hasta la esquina de la cortina larga
+    expect(xMax).toBeCloseTo(end.x, 6);
+    expect(xMin).toBeCloseTo(-hx + 0.02, 6); // nada más allá del extremo -x (cerrado por el anexo)
   });
 
   describe("park y suelo", () => {

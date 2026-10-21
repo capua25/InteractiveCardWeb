@@ -13,18 +13,23 @@ export const galleryCurtains: SceneElement<BarbatosLayout> = {
   id: "gallery-curtains",
   animates: "curtains",
   build({ layout: l, materials }) {
-    const { bays, z, topY, skirtHeight, rollRadius } = l.gallery.curtains;
+    const { bays, end, z, topY, skirtHeight, rollRadius } = l.gallery.curtains;
     const rollY = topY - rollRadius;
     const nylonH = rollY - skirtHeight;
 
     // Un plano por tramo, con el borde superior en y = yTop, ya trasladado a su x y z.
+    // Además de los tramos del lado largo (z = const), los del cierre del extremo +x (x = const).
     const panels = (height: number, yTop: number) =>
-      mergeGeometries(
-        bays.map((b) => {
+      mergeGeometries([
+        ...bays.map((b) => {
           const geo = new THREE.PlaneGeometry(b.x1 - b.x0 - BAY_GAP, height);
           return geo.translate((b.x0 + b.x1) / 2, yTop - height / 2, z);
         }),
-      )!;
+        ...end.bays.map((b) => {
+          const geo = new THREE.PlaneGeometry(b.z0 - b.z1 - BAY_GAP, height);
+          return geo.rotateY(Math.PI / 2).translate(end.x, yTop - height / 2, (b.z0 + b.z1) / 2);
+        }),
+      ])!;
 
     const nylon = new THREE.Mesh(panels(nylonH, 0), materials("nylon"));
     const canvas = new THREE.Mesh(panels(skirtHeight, -nylonH), materials("canvas"));

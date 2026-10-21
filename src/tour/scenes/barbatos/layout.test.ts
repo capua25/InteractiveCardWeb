@@ -225,6 +225,14 @@ describe("layout de Barbato's con medidas reales", () => {
     expect(skirtHeight).toBe(0.9);
     expect(rollRadius).toBe(0.08);
   });
+  it("el cierre norte cubre la galería en z, pegado al extremo +x", () => {
+    const { end, z } = L0.gallery.curtains;
+    expect(end.x).toBeCloseTo(L0.hall.hx + 0.08, 6);
+    expect(end.bays).toHaveLength(2);
+    expect(end.bays[0].z0).toBeCloseTo(-L0.hall.hz, 6);
+    expect(end.bays.at(-1)!.z1).toBeCloseTo(z, 6);
+    end.bays.slice(1).forEach((b, i) => expect(b.z0).toBeCloseTo(end.bays[i].z1, 6));
+  });
   it("ventanas del anexo", () => {
     const h = L0.annex.height;
     expect(L0.annex.frontWindow).toEqual({ x: -12, width: 0.7, height: 1.5, sill: L0.frontWindows[0].sill });
