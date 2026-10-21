@@ -9,7 +9,7 @@ const BAND = { height: 0.1, proud: 0.02, ys: [0.4, 0.85, 1.3] };
 // piedra con hiladas de ladrillo flanqueando la entrada.
 export const park: SceneElement<BarbatosLayout> = {
   id: "park",
-  build({ layout: l, primitives: P, materials }) {
+  build({ layout: l, primitives: P }) {
     const { zBack, zFront, halfWidth: hw, wallHeight: h, frontWallHeight: fh, wallThickness: t, entrance, frontSegments } = l.lot;
     const g = new THREE.Group();
     g.add(P.box(2 * hw + t, h, t, "wallLow", [0, h / 2, zBack]));

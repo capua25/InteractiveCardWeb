@@ -20,7 +20,7 @@ export const forecourt: SceneElement<BarbatosLayout> = {
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
 
-    // la mitad del alto de la piedra queda enterrada en el pedregullo (0.05)
+    // el pedregullo está en y=0.05; la base de la piedra queda ~0.06×size por debajo (centro 0.05 + 0.24×size, semialto 0.3×size)
     const stones = l.forecourt.border.map((s, i) =>
       m.compose(new THREE.Vector3(s.x, 0.05 + s.size * STONE_SQUASH * 0.4, s.z), q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), i * 2.4), new THREE.Vector3(s.size, s.size * STONE_SQUASH, s.size)).clone(),
     );

@@ -309,17 +309,18 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     frontSegments: plinthSegments(-halfWidth, halfWidth, [{ x: entranceX, width: lt.entrance.width }]),
   };
 
-  // Fogón en `x` (junción galería/anexo), a `fromBackWall` del muro del fondo del lote.
+  // Fogón en la junción galería/anexo (borde -x del salón), a `fromBackWall` del muro del fondo del lote.
   const fp = d.firePit;
+  const firePitX = -hx + fp.fromHallLeft;
   const firePitZ = zBack + fp.fromBackWall;
   const firePit = {
-    x: fp.x,
+    x: firePitX,
     z: firePitZ,
     ringRadius: fp.ringDiameter / 2,
     ringHeight: fp.ringHeight,
     basketRadius: fp.basketDiameter / 2,
     sandRadius: fp.sandRadius,
-    sandVertices: hexagonVertices(fp.x, firePitZ, fp.sandRadius),
+    sandVertices: hexagonVertices(firePitX, firePitZ, fp.sandRadius),
   };
 
   // Vegetación: plantines contra el muro del fondo, álamos y formios contra el muro izquierdo.
@@ -328,7 +329,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   const vegetation = {
     saplings: vg.saplings.xs.map((x, i) => ({ x, z: zBack + vg.saplings.fromBackWall, height: vg.saplings.heights[i] })),
     wallRow: vg.wallRow.xs.map((x) => ({ x, z: zBack + vg.wallRow.fromBackWall, height: vg.wallRow.height, radius: vg.wallRow.radius })),
-    tallSaplings: vg.tallSaplings.map((t) => ({ ...t, radius: vg.tallCrownRadius })),
+    tallSaplings: vg.tallSaplings.map((t) => ({ x: firePit.x + t.fromPit.dx, z: firePit.z + t.fromPit.dz, height: t.height, radius: vg.tallCrownRadius })),
     poplars: Array.from({ length: vg.poplars.count }, (_, i) => ({
       x: -halfWidth + vg.poplars.fromSideWall,
       z: along(i, vg.poplars.count, vg.poplars.zStart, zBack + vg.poplars.endFromBackWall),
@@ -338,9 +339,9 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
       x: -halfWidth + vg.phormiums.fromSideWall,
       z: along(i, vg.phormiums.count, vg.phormiums.zStart, zBack + vg.phormiums.endFromBackWall),
     })),
-    willows: vg.willows.map((w) => ({ ...w, height: vg.willowHeight })),
-    conifer: vg.conifer,
-    photinia: vg.photinia,
+    willows: vg.willows.map((w) => ({ x: firePit.x + w.dx, z: firePit.z + w.dz, height: vg.willowHeight })),
+    conifer: { x: hx + vg.conifer.fromHallEnd, z: vg.conifer.z, height: vg.conifer.height },
+    photinia: { x: halfWidth - vg.photinia.fromSideWall, z: gallery.zRoofOuter - vg.photinia.behindGallery, height: vg.photinia.height },
     background: vg.background,
   };
 

@@ -83,25 +83,26 @@ export type BarbatosDimensions = {
     fasciaHeight: number;
     curtains: { skirtHeight: number; rollRadius: number; offset: number };
   };
-  // Vegetación del parque; las posiciones absolutas salen del layout (z relativas al muro del fondo).
+  // Vegetación del parque; las posiciones absolutas salen del layout. Todo es relativo a un ancla: muro del fondo,
+  // fogón (`fromPit`: dx/dz desde el centro del fogón), muro lateral, techo de la galería o extremo +x del salón.
   vegetation: {
     saplings: { xs: number[]; heights: number[]; fromBackWall: number };
     wallRow: { xs: number[]; height: number; radius: number; fromBackWall: number };
-    tallSaplings: { x: number; z: number; height: number }[];
+    tallSaplings: { fromPit: { dx: number; dz: number }; height: number }[];
     tallCrownRadius: number;
     poplars: { count: number; fromSideWall: number; zStart: number; endFromBackWall: number; baseHeight: number; heightStep: number; heightCycle: number };
     phormiums: { count: number; fromSideWall: number; zStart: number; endFromBackWall: number };
-    willows: { x: number; z: number }[];
+    willows: { dx: number; dz: number }[];
     willowHeight: number;
-    conifer: { x: number; z: number; height: number };
-    photinia: { x: number; z: number; height: number };
+    conifer: { fromHallEnd: number; z: number; height: number }; // x a `fromHallEnd` del hastial +x; z sobre el eje del hogar
+    photinia: { fromSideWall: number; behindGallery: number; height: number }; // contra el muro +x; detrás del borde del techo de la galería
     background: { seed: number; count: number; minHeight: number; maxHeight: number };
   };
   // Guirnalda hexagonal: 6 postes en los vértices de la arena; `hangBelowTop` es el enganche bajo la punta del poste.
   garland: { poleHeight: number; hangBelowTop: number; sag: number; bulbSpacing: number };
-  // Fogón sobre arena hexagonal: `x` en el cruce galería/anexo y `fromBackWall` desde el muro del fondo; `sandRadius` es el
+  // Fogón sobre arena hexagonal: `fromHallLeft` desde el borde -x del salón (cruce galería/anexo; 0 = justo ahí) y `fromBackWall` desde el muro del fondo; `sandRadius` es el
   // circunradio (centro→vértice) del hexágono, alineado con los 6 postes de la guirnalda.
-  firePit: { x: number; fromBackWall: number; ringDiameter: number; ringHeight: number; basketDiameter: number; sandRadius: number };
+  firePit: { fromHallLeft: number; fromBackWall: number; ringDiameter: number; ringHeight: number; basketDiameter: number; sandRadius: number };
   // Pedregullo desde el frente.
   patio: { width: number; depth: number; xOffset: number };
   // Borde de piedras en curva sobre el lado `side` del pedregullo (+1 = lado de la chimenea, -1 = opuesto) y lavandas
@@ -191,18 +192,18 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   vegetation: {
     saplings: { xs: [-3, 1.5, 6, 10.5, 15], heights: [2.5, 2.2, 3.0, 2.4, 2.8], fromBackWall: 1.2 },
     wallRow: { xs: [-0.8, 3.8, 8.3, 12.8, 17.2], height: 3.2, radius: 0.25, fromBackWall: 0.8 },
-    tallSaplings: [{ x: 5, z: -31, height: 6 }, { x: -8, z: -25, height: 5.5 }],
+    tallSaplings: [{ fromPit: { dx: 14, dz: 4.35 }, height: 6 }, { fromPit: { dx: 1, dz: 10.35 }, height: 5.5 }],
     tallCrownRadius: 1.2,
     poplars: { count: 22, fromSideWall: 1.2, zStart: -14, endFromBackWall: 1, baseHeight: 4.5, heightStep: 0.4, heightCycle: 3 },
     phormiums: { count: 8, fromSideWall: 2.2, zStart: -16, endFromBackWall: 3 },
-    willows: [{ x: -15.3, z: -32.8 }, { x: -14.5, z: -39.5 }, { x: -16, z: -36.2 }, { x: -2.5, z: -38 }],
+    willows: [{ dx: -6.3, dz: 2.55 }, { dx: -5.5, dz: -4.15 }, { dx: -6.45, dz: -1.9 }, { dx: 6.5, dz: -2.65 }],
     willowHeight: 3.2,
-    conifer: { x: 15, z: 0, height: 6 },
-    photinia: { x: 16.5, z: -16, height: 4.5 },
+    conifer: { fromHallEnd: 6, z: 0, height: 6 },
+    photinia: { fromSideWall: 2.5, behindGallery: 5.65, height: 4.5 },
     background: { seed: 21, count: 18, minHeight: 6, maxHeight: 10 },
   },
   garland: { poleHeight: 2.8, hangBelowTop: 0.05, sag: 0.5, bulbSpacing: 0.375 },
-  firePit: { x: -9, fromBackWall: 7, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 5 },
+  firePit: { fromHallLeft: 0, fromBackWall: 7, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 5 },
   patio: { width: 30, depth: 10, xOffset: -2 },
   forecourt: { side: 1, stones: 25, stoneSize: [0.6, 0.9], lavenderEvery: 2, lavenderOffset: 0.9 },
   tables: { rowsFromLeftWall: [2.5, 5.5, 8.5, 11.5, 14.5], fromLongWall: 2.6 },

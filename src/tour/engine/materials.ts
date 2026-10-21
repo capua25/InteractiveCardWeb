@@ -62,7 +62,7 @@ export function createMaterials(
     crownDark: { color: "#4f7a38", roughness: 1 },
     photinia: { color: "#8a2a22", roughness: 1 },
     phormium: { color: "#7a2a2a", roughness: 0.9 },
-    lavender: { color: "#4a5a2a", roughness: 1, flatShading: true },
+    lavender: { color: "#7d8f6a", roughness: 1, flatShading: true },
     lavenderFlower: { color: "#8a6fc0", roughness: 1 },
     // vidrio: transparente, visible de ambos lados, con reflejo del entorno
     glass: {

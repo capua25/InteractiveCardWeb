@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { BARBATOS_DIMENSIONS, type BarbatosDimensions } from "./dimensions";
-import { BARBATOS_LAYOUT, computeLayout, hexagonVertices } from "./layout";
+import { BARBATOS_LAYOUT, computeLayout, hexagonVertices, type BarbatosLayout } from "./layout";
+import { treeCrowns } from "./elements/vegetation";
 
 const L0 = BARBATOS_LAYOUT;
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 4);
@@ -199,20 +200,24 @@ describe("layout de Barbato's con medidas reales", () => {
     close(v.phormiums[0].z, -16);
     close(v.phormiums[7].z, zb + 3);
     expect(v.phormiums.every((p) => Math.abs(p.x - (-19 + 2.2)) < 1e-9)).toBe(true);
-    expect(v.willows).toEqual([{ x: -15.3, z: -32.8, height: 3.2 }, { x: -14.5, z: -39.5, height: 3.2 }, { x: -16, z: -36.2, height: 3.2 }, { x: -2.5, z: -38, height: 3.2 }]);
-    expect(v.conifer).toEqual({ x: 15, z: 0, height: 6 });
-    expect(v.photinia).toEqual({ x: 16.5, z: -16, height: 4.5 });
+    expect(v.willows.map((w) => [w.x, w.z, w.height])).toEqual(
+      [[-15.3, -32.8, 3.2], [-14.5, -39.5, 3.2], [-15.45, -37.25, 3.2], [-2.5, -38, 3.2]].map((r) => r.map((n) => expect.closeTo(n, 6))),
+    );
+    expect(v.tallSaplings.map((t) => [t.x, t.z, t.height])).toEqual([[5, -31, 6], [-8, -25, 5.5]].map((r) => r.map((n) => expect.closeTo(n, 6))));
+    close(v.conifer.x, 15);
+    close(v.conifer.z, 0);
+    expect(v.conifer.height).toBe(6);
+    close(v.photinia.x, 16.5);
+    close(v.photinia.z, -16);
+    expect(v.photinia.height).toBe(4.5);
     expect(v.background).toEqual({ seed: 21, count: 18, minHeight: 6, maxHeight: 10 });
   });
-  it("la vegetación respeta lote, edificio y arena", () => {
-    const { lot, vegetation: v } = L0;
-    const trees = [...v.saplings, ...v.poplars, ...v.phormiums, ...v.willows, v.conifer, v.photinia];
-    for (const t of trees) {
-      expect(Math.abs(t.x), `x ${t.x}`).toBeLessThan(lot.halfWidth);
-      expect(t.z).toBeGreaterThan(lot.zBack);
-      expect(t.z).toBeLessThan(lot.zFront);
-      const inBuilding = t.x >= -15 && t.x <= 9.5 && t.z >= -10.35 && t.z <= 5.06;
-      expect(inBuilding, `edificio ${t.x},${t.z}`).toBe(false);
+  it("la vegetación respeta lote, edificio y arena", () => expectParkClear(L0));
+  it("los sauces no pisan la columna de álamos", () => {
+    const poplarR = treeCrowns(L0).find((c) => c.radius === 0.7 * 1.15)!.radius;
+    for (const w of L0.vegetation.willows) {
+      const willowR = treeCrowns(L0).find((c) => c.x === w.x && c.z === w.z)!.radius;
+      for (const p of L0.vegetation.poplars) expect(Math.hypot(w.x - p.x, w.z - p.z), `sauce ${w.x},${w.z}`).toBeGreaterThanOrEqual(willowR + poplarR);
     }
   });
   it("la luz del frente cuelga entre los apliques de la puerta", () => {
@@ -226,6 +231,39 @@ describe("layout de Barbato's con medidas reales", () => {
     expect(Math.max(...L0.tables.map((t) => t.x)) + 1.36).toBeLessThan(L0.chimney.x - L0.chimney.depth / 2);
   });
 });
+
+// Rectángulo del edificio derivado del layout: del anexo a las losas de aire, de la galería al frente del anexo.
+const buildingRect = (L: BarbatosLayout) => ({
+  x0: L.annex.x - L.annex.width / 2,
+  x1: Math.max(...L.acUnits.pads.map((p) => p.x + p.w / 2)),
+  z0: L.gallery.zRoofOuter,
+  z1: L.annex.zFront,
+});
+const segDist = (px: number, pz: number, a: { x: number; z: number }, b: { x: number; z: number }) => {
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (pz - a.z) * dz) / (dx * dx + dz * dz)));
+  return Math.hypot(px - (a.x + t * dx), pz - (a.z + t * dz));
+};
+// Ninguna copa sale del lote, toca el edificio ni se acerca a la arena/postes (≥0.5 m).
+function expectParkClear(L: BarbatosLayout) {
+  const { lot, firePit } = L;
+  const r = buildingRect(L);
+  const hex = firePit.sandVertices;
+  for (const c of treeCrowns(L)) {
+    const tag = `${c.x.toFixed(2)},${c.z.toFixed(2)}`;
+    expect(Math.abs(c.x) + c.radius, `lote x ${tag}`).toBeLessThan(lot.halfWidth);
+    expect(c.z - c.radius, `fondo ${tag}`).toBeGreaterThan(lot.zBack);
+    expect(c.z, `frente ${tag}`).toBeLessThan(lot.zFront);
+    const dx = Math.max(r.x0 - c.x, 0, c.x - r.x1);
+    const dz = Math.max(r.z0 - c.z, 0, c.z - r.z1);
+    expect(Math.hypot(dx, dz) - c.radius, `edificio ${tag}`).toBeGreaterThanOrEqual(0);
+    expect(Math.hypot(c.x - firePit.x, c.z - firePit.z), `centro en arena ${tag}`).toBeGreaterThan(firePit.sandRadius * Math.cos(Math.PI / 6));
+    for (let k = 0; k < 6; k++) {
+      expect(segDist(c.x, c.z, hex[k], hex[(k + 1) % 6]) - c.radius, `arena ${tag}`).toBeGreaterThanOrEqual(0.5);
+      expect(Math.hypot(c.x - hex[k].x, c.z - hex[k].z) - c.radius, `poste ${tag}`).toBeGreaterThanOrEqual(0.5);
+    }
+  }
+}
 
 describe("anclaje: los elementos se mueven con su pared", () => {
   const withHall = (hall: Partial<BarbatosDimensions["hall"]>) =>
@@ -250,6 +288,21 @@ describe("anclaje: los elementos se mueven con su pared", () => {
     expect(W14.annex.zFront).toBeCloseTo(7.06, 4);
     close(W14.gallery.zRoofOuter, -12.35);
     expect(W14.annex.zBack).toBe(W14.gallery.zRoofOuter);
+  });
+});
+
+describe("parque con medidas cambiadas", () => {
+  it("fondo a 25 m de la galería y salón de 16 m: el fogón y los árboles siguen sus anclas", () => {
+    const d = structuredClone(BARBATOS_DIMENSIONS);
+    d.lot.backWallFromGallery = 25;
+    d.hall.length = 16;
+    const L = computeLayout(d);
+    close(L.firePit.x, -L.hall.hx);
+    close(L.firePit.z, L.lot.zBack + 7);
+    close(L.vegetation.conifer.x, L.hall.hx + 6);
+    close(L.vegetation.photinia.x, L.lot.halfWidth - 2.5);
+    close(L.vegetation.willows[0].z - L.firePit.z, 2.55);
+    expectParkClear(L);
   });
 });
 
