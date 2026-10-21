@@ -91,6 +91,13 @@ export type BarbatosLayout = {
 };
 
 const FORECOURT_SEED = 15;
+const MIN_DRIVE = 2; // mínimo entre el borde delantero del pedregullo y el muro del frente (entran las lavandas)
+// Pilares de la entrada: semiancho 0.275 + banda 0.02 (park.ts); ninguna piedra se acerca más al eje del muro del frente.
+const WALL_CLEAR = 0.3;
+const MIN_DEPTH = 2; // fondo mínimo del pedregullo para que la esquina redonda no se dé vuelta
+// Largo libre de piedras desde el edificio: la piedra más grande (radio 0.45) no toca la esquina de la vereda de cemento
+// (hx + 0.3) ni el zócalo.
+const BUILDING_CLEAR = 0.8;
 
 /**
  * Tramos de zócalo entre `min` y `max`, cortados por `cuts` (centro y ancho).
@@ -392,7 +399,11 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   // borde delantero → esquina redonda +x → vuelta al frente del salón; cierra por el frente del edificio.
   const fc = d.forecourt;
   const xL = annex.x - annex.width / 2 - fc.leftFromAnnex;
-  const zF = hz + fc.depth;
+  // si el lote no da para `depth`, el borde delantero se recorta para dejar MIN_DRIVE de camino hasta el muro
+  const zF = Math.min(hz + fc.depth, lot.zFront - MIN_DRIVE);
+  if (zF - hz < MIN_DEPTH) {
+    throw new Error(`el pedregullo queda con ${(zF - hz).toFixed(2)} m de fondo entre el salón y el muro del frente; hacen falta al menos ${MIN_DEPTH + MIN_DRIVE} m de lote delante del salón`);
+  }
   const xR = hx + fc.pastHall;
   const { x0: gx0, x1: gx1 } = lot.entrance;
   const zW = lot.zFront;
@@ -428,11 +439,13 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   ];
   // Piedras sobre el contorno (sin el frente del edificio ni la entrada); tamaño sorteado con semilla fija.
   const R = rng(FORECOURT_SEED);
-  const BUILDING_CLEAR = 0.4;
   const border = [
     ...alongPolyline(leftRun, fc.stoneSpacing, BUILDING_CLEAR, fc.gapClear),
     ...alongPolyline(rightRun, fc.stoneSpacing, fc.gapClear, BUILDING_CLEAR),
-  ].map(({ p }) => ({ x: p.x, z: p.z, size: fc.stoneSize[0] + (fc.stoneSize[1] - fc.stoneSize[0]) * R() }));
+  ]
+    .map(({ p }) => ({ x: p.x, z: p.z, size: fc.stoneSize[0] + (fc.stoneSize[1] - fc.stoneSize[0]) * R() }))
+    // con un camino corto (pedregullo recortado) las curvas del camino rozan el muro: fuera las que tocarían pilar o muro
+    .filter((s) => zW - s.z - s.size / 2 > WALL_CLEAR);
   // Lavandas: paralelas al borde delantero, corridas hacia afuera (normal con z > 0), sin las puntas curvas.
   const lavender = alongPolyline([frontStart, ...frontEdge], fc.lavenderSpacing, fc.lavenderSpacing / 2, fc.lavenderSpacing / 2).map(({ p, t }) => {
     const nz = Math.abs(t.x);

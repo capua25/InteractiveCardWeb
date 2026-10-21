@@ -50,13 +50,24 @@ describe("pedregullo curvo del frente", () => {
       // ninguna contra el edificio (anexo + salón, de su borde -x al hastial +x)
       if (s.x > L.annex.x - L.annex.width / 2 - 0.3 && s.x < hx + 0.3) expect(s.z).toBeGreaterThan(hz + 0.3);
       expect(s.z).toBeGreaterThan(hz);
-      expect(s.z).toBeLessThan(zW - 0.5);
       expect(Math.abs(s.x)).toBeLessThan(L.lot.halfWidth);
       expect(s.size).toBeGreaterThanOrEqual(0.6);
       expect(s.size).toBeLessThanOrEqual(0.9);
     }
-    // ninguna piedra tapa la entrada: a lo ancho del hueco todo queda a más de medio metro del muro
-    for (const s of border) if (s.x > x0 && s.x < x1) expect(zW - s.z).toBeGreaterThan(0.5);
+    // ninguna piedra (con su radio) toca el muro del frente ni los pilares (semiancho 0.275 + banda 0.02)
+    for (const s of border) expect(zW - s.z - s.size / 2).toBeGreaterThan(0.295);
+    // ni las veredas de cemento (perimetral: ±(hx+0.3), hz..hz+0.9; de la puerta: ±5 del eje, hasta pérgola+0.6)
+    const rects = [
+      { x0: -hx - 0.3, x1: hx + 0.3, z0: hz, z1: hz + 0.9 },
+      { x0: L.frontDoor.x - 5, x1: L.frontDoor.x + 5, z0: hz, z1: L.pergola.z + 0.6 },
+    ];
+    for (const s of border) {
+      for (const r of rects) {
+        const dx = Math.max(r.x0 - s.x, 0, s.x - r.x1);
+        const dz = Math.max(r.z0 - s.z, 0, s.z - r.z1);
+        expect(Math.hypot(dx, dz)).toBeGreaterThan(s.size / 2);
+      }
+    }
     // separación pareja: vecinas entre 0.3 y 0.6 m
     for (let i = 1; i < border.length; i++) {
       const d = Math.hypot(border[i].x - border[i - 1].x, border[i].z - border[i - 1].z);
@@ -68,7 +79,7 @@ describe("pedregullo curvo del frente", () => {
     for (const p of lavender) {
       expect(inside(p, outline)).toBe(false);
       expect(distToPolyline(p, closed)).toBeGreaterThan(0.7);
-      expect(p.z).toBeGreaterThan(hz + 8);
+      expect(p.z).toBeGreaterThan((hz + zW) / 2);
       expect(p.z).toBeLessThan(zW - 0.5);
       expect(p.x).toBeGreaterThan(x1);
       expect(p.x).toBeLessThan(hx);
@@ -82,8 +93,20 @@ describe("pedregullo curvo del frente", () => {
     close(Math.min(...xs), -17);
     close(Math.max(...xs), L0.hall.hx + 3); // la esquina redonda sale 3 m más allá del hastial +x, como en el croquis
     close(Math.max(...outline.map((p) => p.z)), L0.lot.zFront + L0.lot.wallThickness / 2);
-    expect(border).toHaveLength(98);
+    expect(border).toHaveLength(97);
     expect(lavender).toHaveLength(16);
+  });
+
+  it("recorta un pedregullo más profundo que el lote y rechaza un lote sin lugar delante del salón", () => {
+    const D = BARBATOS_DIMENSIONS;
+    const room = L0.lot.zFront - L0.hall.hz;
+    const deep = computeLayout({ ...D, forecourt: { ...D.forecourt, depth: room + 5 } });
+    check(deep);
+    // el borde delantero queda a 2 m del muro: el punto donde termina la curva del camino derecho
+    const frontStart = deep.forecourt.outline.find((p) => Math.abs(p.x - (deep.lot.entrance.x1 + D.forecourt.driveTurn)) < 1e-9)!;
+    close(frontStart.z, deep.lot.zFront - 2);
+    check(computeLayout({ ...D, hall: { ...D.hall, width: 14 } })); // salón más ancho: menos lote delante, sigue entrando
+    expect(() => computeLayout({ ...D, lot: { ...D.lot, length: 45 } })).toThrow(/pedregullo/);
   });
 
   it("sigue a las anclas cuando cambian las medidas (anexo, entrada, salón)", () => {
