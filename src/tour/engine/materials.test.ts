@@ -55,6 +55,17 @@ describe("materials", () => {
     expect(M("photinia").flatShading).toBe(false);
   });
 
+  it("los materiales con tinte conservan su multiplicador lineal (puede pasar de 1)", () => {
+    const lin: Record<string, [number, number, number]> = {
+      plaster: [0.78, 1.02, 2.16], stone: [0.85, 1.12, 1.5], gravel: [0.7, 0.9, 1.15],
+      grass: [0.84, 0.83, 1.33], wallLow: [2, 3, 5], gabion: [2.3, 2.3, 2.5],
+    };
+    for (const [k, [r, g, b]] of Object.entries(lin)) {
+      const c = M(k as never).color;
+      expect([c.r, c.g, c.b], k).toEqual([r, g, b].map((x) => expect.closeTo(x, 5)));
+    }
+  });
+
   it("los materiales nuevos tienen los colores de las fotos", () => {
     const hex: Record<string, string> = {
       crownLight: "7f9a45", crownDark: "4f7a38", sand: "b5c0d2",

@@ -19,16 +19,17 @@ export const forecourt: SceneElement<BarbatosLayout> = {
     const g = new THREE.Group();
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
-    const one = new THREE.Vector3(1, 1, 1);
 
     // la mitad del alto de la piedra queda enterrada en el pedregullo (0.05)
     const stones = l.forecourt.border.map((s, i) =>
       m.compose(new THREE.Vector3(s.x, 0.05 + s.size * STONE_SQUASH * 0.4, s.z), q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), i * 2.4), new THREE.Vector3(s.size, s.size * STONE_SQUASH, s.size)).clone(),
     );
-    g.add(instanced(new THREE.IcosahedronGeometry(0.5, 0), materials("stone"), stones));
+    g.add(instanced(new THREE.IcosahedronGeometry(0.5, 0), materials("gabion"), stones));
 
-    const bushes = l.forecourt.lavender.map((p) => m.compose(new THREE.Vector3(p.x, 0.35, p.z), q.identity(), one).clone());
-    const flowers = l.forecourt.lavender.map((p) => m.compose(new THREE.Vector3(p.x, 0.35 + FLOWER_LIFT, p.z), q.identity(), one).clone());
+    // variación de tamaño por mata (determinista por índice) para que no se vea una fila de clones
+    const scaleOf = (i: number) => 0.8 + 0.45 * ((i * 0.618) % 1);
+    const bushes = l.forecourt.lavender.map((p, i) => m.compose(new THREE.Vector3(p.x, 0.35 * scaleOf(i), p.z), q.identity(), new THREE.Vector3(1, 1, 1).multiplyScalar(scaleOf(i))).clone());
+    const flowers = l.forecourt.lavender.map((p, i) => m.compose(new THREE.Vector3(p.x, 0.35 * scaleOf(i) + FLOWER_LIFT * scaleOf(i), p.z), q.identity(), new THREE.Vector3(1, 1, 1).multiplyScalar(scaleOf(i))).clone());
     g.add(instanced(new THREE.SphereGeometry(0.35, 6, 4), materials("lavender"), bushes));
     g.add(instanced(new THREE.SphereGeometry(0.2, 5, 3), materials("lavenderFlower"), flowers));
     return g;

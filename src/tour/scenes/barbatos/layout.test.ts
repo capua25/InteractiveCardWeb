@@ -17,8 +17,8 @@ describe("borde de piedras del patio", () => {
       expect(s.x).toBeGreaterThan(edge(1) - 2.1);
       expect(s.z).toBeGreaterThanOrEqual(hz);
       expect(s.z).toBeLessThanOrEqual(L0.lot.zFront);
-      expect(s.size).toBeGreaterThanOrEqual(0.4);
-      expect(s.size).toBeLessThanOrEqual(0.6);
+      expect(s.size).toBeGreaterThanOrEqual(0.6);
+      expect(s.size).toBeLessThanOrEqual(0.9);
     }
   });
   it("nada bloquea la entrada abierta del frente", () => {

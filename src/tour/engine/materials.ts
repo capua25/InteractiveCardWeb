@@ -27,7 +27,9 @@ export function createMaterials(
 ): MaterialFactory {
   const def: Record<MaterialKey, THREE.MeshStandardMaterialParameters> = {
     plaster: { map: T.plaster, color: tint(0.78, 1.02, 2.16), roughness: 0.95 },
-    stone: { map: T.stone, color: tint(0.5, 1, 1.9), roughness: 0.9 },
+    // tints (y hex pins bluish a propósito): compensan el sol #ffb36b + hemi cálida, que dejan sin azul las caras
+    // en sombra; ganancias de azul moderadas para que piedra al sol Y en sombra lean gris neutro
+    stone: { map: T.stone, color: tint(0.85, 1.12, 1.5), roughness: 0.9 },
     roof: { map: T.roof, roughness: 0.5, metalness: 0.2, color: palette.roof, envMap, envMapIntensity: 0.25 },
     metal: { color: "#1b1c1e", roughness: 0.5, metalness: 0.6, envMap, envMapIntensity: 0.4 },
     cement: { map: T.cement, roughness: 0.9 },
@@ -52,15 +54,16 @@ export function createMaterials(
       depthWrite: false, roughness: 0.6,
     },
     canvas: { color: "#141414", roughness: 1, side: THREE.DoubleSide },
+    // hex azulado a propósito: la luz cálida lo lleva a beige claro / gris verdoso en pantalla
     sand: { color: "#b5c0d2", roughness: 1 },
     woodDark: { color: "#2a2c34", roughness: 0.7 },
     gabion: { map: T.stone, color: tint(2.3, 2.3, 2.5), roughness: 0.9 },
     crownLight: { color: "#7f9a45", roughness: 1 },
-    crownDark: { color: "#4f7a38", roughness: 1, flatShading: true },
+    crownDark: { color: "#4f7a38", roughness: 1 },
     photinia: { color: "#8a2a22", roughness: 1 },
-    phormium: { color: "#7a2a2a", roughness: 0.9, flatShading: true },
+    phormium: { color: "#7a2a2a", roughness: 0.9 },
     lavender: { color: "#4a5a2a", roughness: 1, flatShading: true },
-    lavenderFlower: { color: "#746a8a", roughness: 1 },
+    lavenderFlower: { color: "#8a6fc0", roughness: 1 },
     // vidrio: transparente, visible de ambos lados, con reflejo del entorno
     glass: {
       color: "#a9c2cc", roughness: 0.04, metalness: 0.1, transparent: true,

@@ -51,7 +51,7 @@ describe("ELEMENTS de Barbato's", () => {
       else if ((o as THREE.Mesh).isMesh) plain++;
     });
     expect(instanced.map((m) => [m.material, m.count])).toEqual([
-      [ctx.materials("stone"), 25],
+      [ctx.materials("gabion"), 25],
       [ctx.materials("lavender"), 13],
       [ctx.materials("lavenderFlower"), 13],
     ]);
