@@ -54,7 +54,7 @@ export function createViewer(
   const renderer = deps.createRenderer(quality);
   renderer.setPixelRatio(quality.pixelRatio);
   renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.1;
   const canvas = renderer.domElement;

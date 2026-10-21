@@ -111,6 +111,8 @@ describe("createViewer", () => {
     expect(renderer.setPixelRatio).toHaveBeenCalledWith(1.5);
     expect(scene.lights).toHaveBeenCalledWith(quality);
     expect(renderer.shadowMap.enabled).toBe(true);
+    // three 0.186 eliminó PCFSoftShadowMap (cae a PCF con un warning en consola).
+    expect(renderer.shadowMap.type).toBe(THREE.PCFShadowMap);
   });
 
   it("cruza la anisotropía de la calidad con la de la GPU", () => {
