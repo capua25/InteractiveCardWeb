@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 import { rng } from "@/tour/engine/textures";
 import type { GeometryDetail, SceneElement } from "@/tour/types";
 import type { BarbatosLayout } from "../layout";
@@ -78,10 +78,15 @@ const DETAIL = {
 } as const;
 const CROWN_NOISE = 0.14;
 
-// Icosaedro unitario de bajo poly con ruido radial determinista: los vértices coincidentes (misma posición)
-// se desplazan igual, así la silueta queda orgánica sin abrir grietas. Se hornea una vez en la geometría compartida.
+// Icosaedro unitario con ruido radial determinista. Se sueldan los vértices coincidentes (sin normal ni uv, que
+// los separarían) y el ruido se aplica por vértice único: la silueta queda orgánica sin grietas y, al promediar
+// las normales entre caras, la copa se sombrea suave (no facetada). Se hornea una vez en la geometría compartida.
 export function crownGeometry(detail: GeometryDetail): THREE.BufferGeometry {
-  const geo = new THREE.IcosahedronGeometry(1, DETAIL[detail].crown).toNonIndexed();
+  const raw = new THREE.IcosahedronGeometry(1, DETAIL[detail].crown);
+  raw.deleteAttribute("normal");
+  raw.deleteAttribute("uv");
+  const geo = mergeVertices(raw);
+  raw.dispose();
   const pos = geo.getAttribute("position");
   const v = new THREE.Vector3();
   for (let i = 0; i < pos.count; i++) {

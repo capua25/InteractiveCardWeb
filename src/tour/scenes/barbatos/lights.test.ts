@@ -16,11 +16,28 @@ describe("createLights", () => {
     const sun = lights.find((l) => l instanceof THREE.DirectionalLight) as THREE.DirectionalLight;
     expect(sun.color.getHexString()).toBe("ffb36b");
     expect(sun.intensity).toBe(3);
-    expect(sun.position.toArray()).toEqual([6, 10, -48]);
+    const c = BARBATOS_LAYOUT.lot.centerZ;
+    expect(sun.target.position.x).toBeCloseTo(0);
+    expect(sun.target.position.y).toBeCloseTo(0);
+    expect(sun.target.position.z).toBeCloseTo(c);
+    expect(sun.position.x).toBeCloseTo(7.8);
+    expect(sun.position.y).toBeCloseTo(13);
+    expect(sun.position.z).toBeCloseTo(c - 57.2);
     expect(sun.castShadow).toBe(true);
     expect(sun.shadow.mapSize.toArray()).toEqual([1024, 1024]);
     expect(lights).toContain(sun.target);
-    expect(sun.target.position.toArray()).toEqual([0, 0, -4]);
+  });
+  it("la dirección del sol no cambió", () => {
+    const sun = lights.find((l) => l instanceof THREE.DirectionalLight) as THREE.DirectionalLight;
+    const dir = sun.position.clone().sub(sun.target.position).normalize();
+    const ref = new THREE.Vector3(6, 10, -44).normalize();
+    expect(dir.distanceTo(ref)).toBeLessThan(1e-6);
+  });
+  it("la cámara de sombra cubre el lote", () => {
+    const sun = lights.find((l) => l instanceof THREE.DirectionalLight) as THREE.DirectionalLight;
+    const cam = sun.shadow.camera as THREE.OrthographicCamera;
+    expect(cam.right - cam.left).toBeGreaterThanOrEqual(2 * BARBATOS_LAYOUT.lot.halfWidth + 8);
+    expect([cam.left, cam.right, cam.top, cam.bottom, cam.near, cam.far]).toEqual([-26, 26, 20, -16, 5, 140]);
   });
   it("5 point lights cálidas sin sombra en las posiciones del layout", () => {
     const points = lights.filter((l) => l instanceof THREE.PointLight) as THREE.PointLight[];

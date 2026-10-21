@@ -260,6 +260,13 @@ describe("ELEMENTS de Barbato's", () => {
     it("las copas de alto detalle tienen más vértices que las de bajo", () => {
       expect(crownGeometry("high").getAttribute("position").count).toBeGreaterThan(crownGeometry("low").getAttribute("position").count);
     });
+    it("la copa comparte vértices entre caras (normales suaves, no facetada)", () => {
+      for (const d of ["high", "low"] as const) {
+        const g = crownGeometry(d);
+        expect(g.index).not.toBeNull();
+        expect(g.getAttribute("position").count).toBeLessThan(g.index!.count);
+      }
+    });
     it("el detalle no cambia la cantidad de meshes (draw calls)", () => {
       const count = (detail: "high" | "low") => {
         let n = 0;

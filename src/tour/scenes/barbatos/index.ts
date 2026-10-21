@@ -14,7 +14,7 @@ export const barbatosScene: TourScene = {
   lights: (quality) => createLights(BARBATOS_LAYOUT, quality),
   views: BARBATOS_VIEWS,
   background: "#e7a77a",
-  fog: { near: 60, far: 170 },
+  fog: { near: 70, far: 190 },
   targetBounds: BARBATOS_LAYOUT.targetBounds,
 };
 
