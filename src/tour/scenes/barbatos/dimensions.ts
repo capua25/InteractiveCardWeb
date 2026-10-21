@@ -84,10 +84,10 @@ export type BarbatosDimensions = {
     curtains: { skirtHeight: number; rollRadius: number; offset: number };
   };
   park: {
-    garlandFromBack: number;
-    garlandPolesX: number[];
     trees: { x: number; from: "back" | "front"; offset: number; scale: number }[];
   };
+  // Guirnalda hexagonal: 6 postes en los vértices de la arena; `hangBelowTop` es el enganche bajo la punta del poste.
+  garland: { poleHeight: number; hangBelowTop: number; sag: number; bulbSpacing: number };
   // Fogón sobre arena hexagonal: `fromGallery` detrás del borde del techo de la galería; `sandRadius` es el
   // circunradio (centro→vértice) del hexágono, alineado con los 6 postes de la guirnalda.
   firePit: { fromGallery: number; ringDiameter: number; ringHeight: number; basketDiameter: number; sandRadius: number };
@@ -175,8 +175,6 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.8 },
   gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3, curtains: { skirtHeight: 0.9, rollRadius: 0.08, offset: 0.08 } },
   park: {
-    garlandFromBack: 11,
-    garlandPolesX: [-9, -3, 3, 9],
     trees: [
       { x: -15, from: "back", offset: 10, scale: 1.1 },
       { x: -7, from: "back", offset: 15, scale: 1.3 },
@@ -188,6 +186,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
       { x: 20, from: "front", offset: 6, scale: 1 },
     ],
   },
+  garland: { poleHeight: 2.8, hangBelowTop: 0.05, sag: 0.5, bulbSpacing: 0.375 },
   firePit: { fromGallery: 22, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 3.5 },
   patio: { width: 30, depth: 10, xOffset: -2 },
   tables: { rowsFromLeftWall: [2.5, 5.5, 8.5, 11.5, 14.5], fromLongWall: 2.6 },

@@ -243,6 +243,43 @@ describe("ELEMENTS de Barbato's", () => {
     });
   });
 
+  describe("guirnalda", () => {
+    const build = () => ELEMENTS.find((e) => e.id === "garland")!.build(ctx);
+    const bulbMesh = () => {
+      let found: THREE.InstancedMesh | undefined;
+      build().traverse((o) => {
+        if ((o as THREE.InstancedMesh).isInstancedMesh && (o as THREE.InstancedMesh).material === ctx.materials("bulb")) found = o as THREE.InstancedMesh;
+      });
+      return found!;
+    };
+    const bulbPositions = () => {
+      const m = bulbMesh();
+      const mat = new THREE.Matrix4();
+      return Array.from({ length: m.count }, (_, i) => new THREE.Vector3().setFromMatrixPosition(m.getMatrixAt(i, mat)));
+    };
+    it("guirnalda: 6 postes de 2.8, 54 bombitas y nada hacia la galería", () => {
+      const poles: THREE.Mesh[] = [];
+      build().traverse((o) => {
+        const m = o as THREE.Mesh;
+        if (m.isMesh && !(m as THREE.InstancedMesh).isInstancedMesh && m.geometry instanceof THREE.CylinderGeometry) poles.push(m);
+      });
+      expect(poles).toHaveLength(6);
+      for (const p of poles) expect((p.geometry as THREE.CylinderGeometry).parameters.height).toBe(2.8);
+      const f = BARBATOS_LAYOUT.firePit;
+      const bulbs = bulbPositions();
+      expect(bulbMesh().count).toBe(54);
+      for (const b of bulbs) expect(Math.hypot(b.x - f.x, b.z - f.z)).toBeLessThanOrEqual(3.5 + 1e-6);
+      expect(Math.min(...bulbs.map((b) => b.y))).toBeGreaterThanOrEqual(2.2);
+    });
+    it("cada tramo une vértices adyacentes", () => {
+      const bulbs = bulbPositions();
+      BARBATOS_LAYOUT.park.garland.poles.forEach((p, k) => {
+        expect(bulbs[k * 9].x).toBeCloseTo(p.x, 4);
+        expect(bulbs[k * 9].z).toBeCloseTo(p.z, 4);
+      });
+    });
+  });
+
   describe("frente: pérgola y apliques", () => {
     const meshes = (id: string) => {
       const out: THREE.Mesh[] = [];

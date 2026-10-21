@@ -68,7 +68,7 @@ export type BarbatosLayout = {
   };
   park: {
     trees: { x: number; z: number; scale: number }[];
-    garland: { z: number; polesX: number[] };
+    garland: { poles: { x: number; z: number }[]; poleHeight: number; hangY: number; sag: number; bulbSpacing: number };
   };
   firePit: { x: number; z: number; ringRadius: number; ringHeight: number; basketRadius: number; sandRadius: number; sandVertices: { x: number; z: number }[] };
   patio: { x: number; z: number; width: number; depth: number };
@@ -295,11 +295,10 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     frontSegments: plinthSegments(-halfWidth, halfWidth, [{ x: entranceX, width: lt.entrance.width }]),
   };
 
-  // Parque: guirnalda y árboles desde el fondo/frente del salón.
+  // Parque: árboles desde el fondo/frente del salón.
   const pk = d.park;
   const park = {
     trees: pk.trees.map((t) => ({ x: t.x, z: t.from === "back" ? -hz - t.offset : hz + t.offset, scale: t.scale })),
-    garland: { z: -hz - pk.garlandFromBack, polesX: [...pk.garlandPolesX] },
   };
 
   // Fogón centrado en x, a fromGallery del borde del techo de la galería.
@@ -314,6 +313,10 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     sandRadius: fp.sandRadius,
     sandVertices: hexagonVertices(0, firePitZ, fp.sandRadius),
   };
+
+  // Guirnalda: un poste por vértice de la arena; el cable cuelga 5 cm bajo la punta.
+  const gl = d.garland;
+  const garland = { poles: firePit.sandVertices, poleHeight: gl.poleHeight, hangY: gl.poleHeight - gl.hangBelowTop, sag: gl.sag, bulbSpacing: gl.bulbSpacing };
 
   // Pedregullo desde el frente.
   const patio = {
@@ -367,7 +370,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     pergola,
     gallery,
     lot,
-    park,
+    park: { ...park, garland },
     firePit,
     patio,
     tables,

@@ -138,10 +138,12 @@ describe("layout de Barbato's con medidas reales", () => {
     expect(f).toMatchObject({ x: 0, ringRadius: 1.2, ringHeight: 0.55, basketRadius: 0.4, sandRadius: 3.5 });
     expect(f.sandVertices).toEqual(hexagonVertices(f.x, f.z, 3.5));
   });
+  it("los postes de la guirnalda son los vértices de la arena", () => {
+    expect(L0.park.garland).toEqual({ poles: L0.firePit.sandVertices, poleHeight: 2.8, hangY: 2.75, sag: 0.5, bulbSpacing: 0.375 });
+  });
   it("el lote ya no cuelga el muro de park", () => { expect("wall" in L0.park).toBe(false); });
   it("parque, patio, mesas y luces", () => {
     expect(L0.park.trees).toEqual([[-15,-15,1.1],[-7,-20,1.3],[4,-21,1.2],[13,-14,1],[17,-20,1.2],[-18,-21,0.9],[-20,9,1.1],[20,11,1]].map(([x,z,scale]) => ({ x, z, scale })));
-    expect(L0.park.garland).toEqual({ z: -16, polesX: [-9, -3, 3, 9] });
     expect(L0.patio).toEqual({ x: -2, z: 10, width: 30, depth: 10 });
     expect(L0.tables.slice(0, 4).map((t) => [t.z, t.kind])).toEqual([[2.4, "round"], [-2.4, "rect"], [2.4, "rect"], [-2.4, "round"]]);
     expect(L0.pointLights).toEqual([[expect.closeTo(-1.5, 4), 2.6, 5.8], [-4, 3.2, 0], [4, 3.2, 0], [expect.closeTo(7.2, 4), 0.9, 0], [0, 2.6, -7]]);
