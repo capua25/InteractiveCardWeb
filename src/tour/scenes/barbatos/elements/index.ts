@@ -5,6 +5,7 @@ import { annex } from "./annex";
 import { annexRoof } from "./annex-roof";
 import { backWall } from "./back-wall";
 import { chimney } from "./chimney";
+import { firePit } from "./fire-pit";
 import { floor } from "./floor";
 import { frontWall } from "./front-wall";
 import { gables } from "./gables";
@@ -41,6 +42,7 @@ export const ELEMENTS: readonly SceneElement<BarbatosLayout>[] = [
   galleryRoof,
   galleryCurtains,
   park,
+  firePit,
   garland,
   tables,
 ];

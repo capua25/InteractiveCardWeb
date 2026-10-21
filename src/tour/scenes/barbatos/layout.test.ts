@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BARBATOS_DIMENSIONS, type BarbatosDimensions } from "./dimensions";
-import { BARBATOS_LAYOUT, computeLayout } from "./layout";
+import { BARBATOS_LAYOUT, computeLayout, hexagonVertices } from "./layout";
 
 const L0 = BARBATOS_LAYOUT;
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 4);
@@ -118,6 +118,25 @@ describe("layout de Barbato's con medidas reales", () => {
     expect(L0.lot.entrance).toEqual({ x0: -14.25, x1: -9.75 });
     close((L0.lot.entrance.x0 + L0.lot.entrance.x1) / 2, L0.annex.x);
     expect(L0.lot.frontSegments).toEqual([{ x0: -19, x1: -14.25 }, { x0: -9.75, x1: 19 }]);
+  });
+  it("hexagonVertices da 6 vértices a radio r con lados iguales a r", () => {
+    const v = hexagonVertices(2, -5, 3.5);
+    expect(v).toHaveLength(6);
+    expect(v[0].x).toBeCloseTo(2 + 3.5, 6);
+    expect(v[0].z).toBeCloseTo(-5, 6);
+    v.forEach((p, i) => {
+      close(Math.hypot(p.x - 2, p.z + 5), 3.5);
+      const n = v[(i + 1) % 6];
+      close(Math.hypot(n.x - p.x, n.z - p.z), 3.5);
+    });
+  });
+  it("el fogón está a 22 del borde de la galería y a 10 del muro del fondo", () => {
+    const f = L0.firePit;
+    close(f.z, -32.35);
+    close(f.z, L0.gallery.zRoofOuter - 22);
+    close(f.z - L0.lot.zBack, 10);
+    expect(f).toMatchObject({ x: 0, ringRadius: 1.2, ringHeight: 0.55, basketRadius: 0.4, sandRadius: 3.5 });
+    expect(f.sandVertices).toEqual(hexagonVertices(f.x, f.z, 3.5));
   });
   it("el lote ya no cuelga el muro de park", () => { expect("wall" in L0.park).toBe(false); });
   it("parque, patio, mesas y luces", () => {

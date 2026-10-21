@@ -88,6 +88,9 @@ export type BarbatosDimensions = {
     garlandPolesX: number[];
     trees: { x: number; from: "back" | "front"; offset: number; scale: number }[];
   };
+  // Fogón sobre arena hexagonal: `fromGallery` detrás del borde del techo de la galería; `sandRadius` es el
+  // circunradio (centro→vértice) del hexágono, alineado con los 6 postes de la guirnalda.
+  firePit: { fromGallery: number; ringDiameter: number; ringHeight: number; basketDiameter: number; sandRadius: number };
   // Pedregullo desde el frente.
   patio: { width: number; depth: number; xOffset: number };
   // Filas desde el muro izquierdo exterior; mesas a `fromLongWall` de cada muro largo.
@@ -185,6 +188,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
       { x: 20, from: "front", offset: 6, scale: 1 },
     ],
   },
+  firePit: { fromGallery: 22, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 3.5 },
   patio: { width: 30, depth: 10, xOffset: -2 },
   tables: { rowsFromLeftWall: [2.5, 5.5, 8.5, 11.5, 14.5], fromLongWall: 2.6 },
   pointLights: {

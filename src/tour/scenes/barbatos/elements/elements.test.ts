@@ -17,7 +17,7 @@ describe("ELEMENTS de Barbato's", () => {
   it("registra los elementos del v6 en orden", () => {
     expect(ELEMENTS.map((e) => e.id)).toEqual([
       "ground", "patio", "front-wall", "back-wall", "gables", "plinth", "floor", "chimney", "ac-units", "trusses",
-      "roof", "annex", "annex-roof", "pergola", "gallery", "gallery-roof", "gallery-curtains", "park", "garland", "tables",
+      "roof", "annex", "annex-roof", "pergola", "gallery", "gallery-roof", "gallery-curtains", "park", "fire-pit", "garland", "tables",
     ]);
   });
 
@@ -207,6 +207,39 @@ describe("ELEMENTS de Barbato's", () => {
       expect(s.x).toBe(160);
       expect(s.y).toBe(160);
       expect(g.position.z).toBeCloseTo(l.centerZ, 5);
+    });
+  });
+
+  describe("fogón", () => {
+    const pit = () => {
+      const out: THREE.Mesh[] = [];
+      ELEMENTS.find((e) => e.id === "fire-pit")!.build(ctx).traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh);
+      });
+      return out;
+    };
+    it("fire-pit: aro de piedra de ⌀2.4 y arena hexagonal sin sombra", () => {
+      const ring = pit().filter((m) => m.material === ctx.materials("stone"));
+      expect(ring).toHaveLength(1);
+      ring[0].geometry.computeBoundingBox();
+      expect(ring[0].geometry.boundingBox!.getSize(new THREE.Vector3()).x).toBeCloseTo(2.4, 2);
+      const sand = pit().filter((m) => m.material === ctx.materials("sand"));
+      expect(sand).toHaveLength(1);
+      expect((sand[0].geometry as THREE.CircleGeometry).parameters.segments).toBe(6);
+      expect((sand[0].geometry as THREE.CircleGeometry).parameters.radius).toBe(3.5);
+      expect(sand[0].userData.noShadow).toBe(true);
+    });
+    it("fire-pit: disco de brasa, canasto abierto, 4 leños y brasas sin sombra", () => {
+      const ms = pit();
+      const of = (k: string) => ms.filter((m) => m.material === ctx.materials(k as never));
+      expect(of("hearth")).toHaveLength(1);
+      expect(of("hearth")[0].userData.noShadow).toBe(true);
+      expect(of("wood")).toHaveLength(4);
+      expect(of("fire")).toHaveLength(1);
+      expect(of("fire")[0].userData.noShadow).toBe(true);
+      const basket = of("metal");
+      expect(basket).toHaveLength(1);
+      expect((basket[0].geometry as THREE.CylinderGeometry).parameters.openEnded).toBe(true);
     });
   });
 

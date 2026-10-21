@@ -70,6 +70,7 @@ export type BarbatosLayout = {
     trees: { x: number; z: number; scale: number }[];
     garland: { z: number; polesX: number[] };
   };
+  firePit: { x: number; z: number; ringRadius: number; ringHeight: number; basketRadius: number; sandRadius: number; sandVertices: { x: number; z: number }[] };
   patio: { x: number; z: number; width: number; depth: number };
   tables: TableSpot[];
   pointLights: Vec3[];
@@ -89,6 +90,17 @@ export function plinthSegments(min: number, max: number, cuts: { x: number; widt
     x = c.x + c.width / 2;
   }
   return out;
+}
+
+/**
+ * Vértices de un hexágono regular de circunradio `r` centrado en (cx, cz): θk = k·π/3, primer vértice en +x.
+ * Coincide con `CircleGeometry(r, 6)` rotada −π/2 en x (de ahí el signo de z).
+ */
+export function hexagonVertices(cx: number, cz: number, r: number): { x: number; z: number }[] {
+  return Array.from({ length: 6 }, (_, k) => {
+    const theta = (k * Math.PI) / 3;
+    return { x: cx + r * Math.cos(theta), z: cz - r * Math.sin(theta) };
+  });
 }
 
 const centered = (i: number, count: number, step: number) => (i - (count - 1) / 2) * step;
@@ -290,6 +302,19 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     garland: { z: -hz - pk.garlandFromBack, polesX: [...pk.garlandPolesX] },
   };
 
+  // Fogón centrado en x, a fromGallery del borde del techo de la galería.
+  const fp = d.firePit;
+  const firePitZ = gallery.zRoofOuter - fp.fromGallery;
+  const firePit = {
+    x: 0,
+    z: firePitZ,
+    ringRadius: fp.ringDiameter / 2,
+    ringHeight: fp.ringHeight,
+    basketRadius: fp.basketDiameter / 2,
+    sandRadius: fp.sandRadius,
+    sandVertices: hexagonVertices(0, firePitZ, fp.sandRadius),
+  };
+
   // Pedregullo desde el frente.
   const patio = {
     x: d.patio.xOffset,
@@ -343,6 +368,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     gallery,
     lot,
     park,
+    firePit,
     patio,
     tables,
     pointLights,
