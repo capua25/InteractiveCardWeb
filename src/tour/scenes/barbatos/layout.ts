@@ -42,7 +42,17 @@ export type BarbatosLayout = {
     units: { x: number; y: number; z: number; w: number; h: number; d: number }[];
   };
   carpet: { x0: number; x1: number; width: number };
-  annex: { x: number; width: number; height: number; zFront: number; zBack: number };
+  annex: {
+    x: number;
+    width: number;
+    height: number;
+    zFront: number;
+    zBack: number;
+    frontWindow: Opening;
+    rearWindow: Opening;
+    rearSconces: { x: number; y: number }[];
+    rearPlinth: number;
+  };
   pergola: { z: number; height: number; columnsX: number[] };
   gallery: { zInner: number; zPosts: number; zRoofOuter: number; depth: number; postHeight: number; fasciaHeight: number; postsX: number[] };
   lot: {
@@ -222,12 +232,20 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   };
 
   // Anexo a la izquierda: retranqueado desde el frente, fondo anclado al borde exterior del techo de la galería.
+  const an = d.annex;
+  const annexX = -hx - an.width / 2;
+  const annexHeight = an.heightRatio * d.hall.wallHeight;
+  const rearSill = annexHeight / 2 - an.rearWindow.height / 2;
   const annex = {
-    x: -hx - d.annex.width / 2,
-    width: d.annex.width,
-    height: d.annex.heightRatio * d.hall.wallHeight,
-    zFront: hz + d.plinth.overhang - d.annex.setbackFromFront,
+    x: annexX,
+    width: an.width,
+    height: annexHeight,
+    zFront: hz + d.plinth.overhang - an.setbackFromFront,
     zBack: gallery.zRoofOuter,
+    frontWindow: { x: annexX, ...an.frontWindow, sill: fw.sill },
+    rearWindow: { x: annexX, ...an.rearWindow, sill: rearSill },
+    rearSconces: [-0.9, 0.9].map((dx) => ({ x: annexX + dx, y: rearSill + an.rearWindow.height + 0.4 })),
+    rearPlinth: an.rearPlinthRatio * annexHeight,
   };
 
   // Pérgola desde el frente.

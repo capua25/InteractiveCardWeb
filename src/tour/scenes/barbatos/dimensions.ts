@@ -61,7 +61,15 @@ export type BarbatosDimensions = {
   // Desde el muro izquierdo interior hasta `frontGap` antes del frente de la chimenea.
   carpet: { width: number; fromLeftWall: number; chimneyGap: number };
   // A la izquierda del salón.
-  annex: { width: number; heightRatio: number; setbackFromFront: number };
+  // Ventana angosta del frente, ventana horizontal del fondo y zócalo del fondo (fracción del alto).
+  annex: {
+    width: number;
+    heightRatio: number;
+    setbackFromFront: number;
+    frontWindow: { width: number; height: number };
+    rearWindow: { width: number; height: number };
+    rearPlinthRatio: number;
+  };
   // Desde el frente.
   pergola: { distanceFromFront: number; height: number; columnsFromAxis: number };
   // Desde el fondo.
@@ -152,7 +160,14 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
     z: [-2.1, 2.1], // uno a cada lado del bloque exterior
   },
   carpet: { width: 1.8, fromLeftWall: 0.2, chimneyGap: 0.3 },
-  annex: { width: 6, heightRatio: 1.1, setbackFromFront: 0 },
+  annex: {
+    width: 6,
+    heightRatio: 1.1,
+    setbackFromFront: 0,
+    frontWindow: { width: 0.7, height: 1.5 },
+    rearWindow: { width: 2.6, height: 0.55 },
+    rearPlinthRatio: 0.2,
+  },
   pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.8 },
   gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3 },
   park: {

@@ -239,4 +239,58 @@ describe("ELEMENTS de Barbato's", () => {
       }
     });
   });
+
+  describe("anexo", () => {
+    const meshes = (id: string) => {
+      const out: THREE.Mesh[] = [];
+      ELEMENTS.find((e) => e.id === id)!.build(ctx).traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh);
+      });
+      return out;
+    };
+    const box3 = (m: THREE.Mesh) => {
+      m.geometry.computeBoundingBox();
+      return m.geometry.boundingBox!.clone().translate(m.position);
+    };
+    const a = BARBATOS_LAYOUT.annex;
+
+    it("el anexo no tiene rectángulo hearth en el frente", () => {
+      const front = meshes("annex").filter((m) => m.material === ctx.materials("hearth") && m.position.z > a.zFront - 0.1);
+      expect(front).toHaveLength(0);
+    });
+
+    it("el frente del anexo lleva una ventana angosta gris con vidrio esmerilado", () => {
+      const all = meshes("annex");
+      expect(all.some((m) => m.material === ctx.materials("frostedGlass") && Math.abs(m.position.x - a.frontWindow.x) < 1e-6)).toBe(true);
+      expect(all.some((m) => m.material === ctx.materials("frameGray"))).toBe(true);
+    });
+
+    it("el fondo del anexo es revoque gris", () => {
+      const plate = meshes("annex").filter((m) => m.material === ctx.materials("greyStucco"));
+      expect(plate.length).toBeGreaterThan(0);
+      expect(plate.some((m) => Math.abs(m.position.z - a.zBack) < 0.05)).toBe(true);
+    });
+
+    it("el fondo tiene ventana horizontal de madera y dos apliques", () => {
+      const all = meshes("annex");
+      expect(all.some((m) => m.material === ctx.materials("wood"))).toBe(true);
+      const emitters = all.filter((m) => m.material === ctx.materials("sconce"));
+      expect(emitters).toHaveLength(2);
+      for (const s of a.rearSconces) expect(emitters.some((m) => Math.abs(m.position.x - s.x) < 1e-6 && m.position.z < a.zBack)).toBe(true);
+    });
+
+    it("el techo del anexo no vuela", () => {
+      const slab = meshes("annex-roof").filter((m) => m.material === ctx.materials("roof"));
+      expect(slab).toHaveLength(1);
+      const b = box3(slab[0]);
+      expect(b.min.x).toBeCloseTo(a.x - a.width / 2, 6);
+      expect(b.max.x).toBeCloseTo(a.x + a.width / 2, 6);
+      expect(b.min.z).toBeCloseTo(a.zBack, 6);
+      expect(b.max.z).toBeCloseTo(a.zFront, 6);
+    });
+
+    it("el techo del anexo lleva un borde metálico en los 4 lados", () => {
+      expect(meshes("annex-roof").filter((m) => m.material === ctx.materials("metal"))).toHaveLength(4);
+    });
+  });
 });
