@@ -54,7 +54,7 @@ export type BarbatosDimensions = {
   };
   // Losa de cemento contra el zócalo del hastial +x y equipos encima (z de cada uno).
   acUnits: {
-    slab: { w: number; d: number; h: number; z: number };
+    pad: { h: number; margin: number }; // una losa por equipo, `margin` más grande que el equipo por lado
     unit: { w: number; h: number; d: number };
     z: number[];
   };
@@ -143,13 +143,13 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
     height: 5.2,
     width: 2.8,
     hearthFromInnerWall: 1.22,
-    stack: { depth: 0.5, width: 2.8, heightRatio: 0.75 },
+    stack: { depth: 0.5, width: 2.8, heightRatio: 1 },
     flue: { radius: 0.22, capRadius: 0.28, aboveRidge: 1.9, offsetX: 0.03 },
   },
   acUnits: {
-    slab: { w: 0.8, d: 2.5, h: 0.1, z: -3.6 },
+    pad: { h: 0.1, margin: 0.1 },
     unit: { w: 0.3, h: 0.55, d: 0.8 },
-    z: [-4.3, -2.9],
+    z: [-2.1, 2.1], // uno a cada lado del bloque exterior
   },
   carpet: { width: 1.8, fromLeftWall: 0.2, chimneyGap: 0.3 },
   annex: { width: 6, heightRatio: 1.1, setbackFromFront: 0 },

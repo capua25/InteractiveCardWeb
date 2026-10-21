@@ -38,7 +38,7 @@ export type BarbatosLayout = {
     flue: { x: number; base: number; top: number; radius: number; capRadius: number };
   };
   acUnits: {
-    slab: { x: number; z: number; w: number; d: number; h: number };
+    pads: { x: number; z: number; w: number; d: number; h: number }[];
     units: { x: number; y: number; z: number; w: number; h: number; d: number }[];
   };
   carpet: { x0: number; x1: number; width: number };
@@ -192,12 +192,14 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     },
   };
 
-  // Equipos de aire: losa pegada al zócalo del hastial +x, equipos apoyados encima.
+  // Equipos de aire: una losa por equipo pegada al zócalo del hastial +x, equipo apoyado encima.
   const ac = d.acUnits;
-  const slabX = hx + d.plinth.overhang + ac.slab.w / 2;
+  const padW = ac.unit.w + 2 * ac.pad.margin;
+  const padD = ac.unit.d + 2 * ac.pad.margin;
+  const padX = hx + d.plinth.overhang + padW / 2; // borde de la losa pegado al zócalo
   const acUnits = {
-    slab: { x: slabX, z: ac.slab.z, w: ac.slab.w, d: ac.slab.d, h: ac.slab.h },
-    units: ac.z.map((z) => ({ x: slabX, y: ac.slab.h + ac.unit.h / 2, z, ...ac.unit })),
+    pads: ac.z.map((z) => ({ x: padX, z, w: padW, d: padD, h: ac.pad.h })),
+    units: ac.z.map((z) => ({ x: padX, y: ac.pad.h + ac.unit.h / 2, z, ...ac.unit })),
   };
 
   // Alfombra: desde el muro izquierdo interior hasta chimneyGap antes del frente de la chimenea.

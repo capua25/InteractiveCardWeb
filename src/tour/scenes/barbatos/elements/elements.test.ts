@@ -57,10 +57,10 @@ describe("ELEMENTS de Barbato's", () => {
     expect(metal.every((m) => m.position.x >= BARBATOS_LAYOUT.hall.hx)).toBe(true);
   });
 
-  it("ac-units arma 2 equipos sobre la losa", () => {
+  it("ac-units arma 2 equipos, cada uno sobre su losa", () => {
     const meshes = meshesOf("ac-units");
     expect(meshes.filter((m) => m.material === ctx.materials("acWhite"))).toHaveLength(2);
-    expect(meshes.filter((m) => m.material === ctx.materials("cement"))).toHaveLength(1);
+    expect(meshes.filter((m) => m.material === ctx.materials("cement"))).toHaveLength(2);
   });
 
   it("los faldones vuelan 0.05 en los hastiales", () => {

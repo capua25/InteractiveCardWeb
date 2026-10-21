@@ -18,7 +18,7 @@ export const chimney: SceneElement<BarbatosLayout> = {
     g.add(P.box(s.depth, s.height, s.width, "stone", [s.x, s.height / 2, 0]));
     g.add(P.box(s.depth + 0.06, 0.06, s.width + 0.06, "cement", [s.x, s.height + 0.03, 0])); // tapa
     g.add(P.cyl(f.radius, f.top - f.base, "metal", [f.x, (f.top + f.base) / 2, 0]));
-    g.add(P.cyl(f.capRadius, 0.08, "metal", [f.x, f.top + 0.1, 0])); // sombrero
+    g.add(P.cyl(f.capRadius, 0.08, "metal", [f.x, f.top + 0.04, 0])); // sombrero al ras del caño
     return g;
   },
 };

@@ -53,7 +53,7 @@ describe("layout de Barbato's con medidas reales", () => {
   it("la chimenea exterior sale del hastial +x", () => {
     const { stack, flue } = L0.chimney;
     close(stack.x - stack.depth / 2, L0.hall.hx);
-    close(stack.height, 2.625);
+    close(stack.height, 3.5);
     close(flue.top, 8.3);
     close(flue.base, stack.height);
     close(flue.x, stack.x + 0.03);
@@ -63,15 +63,21 @@ describe("layout de Barbato's con medidas reales", () => {
     const { hz, wallHeight, slope } = L0.hall;
     expect(L0.chimney.height).toBeLessThan(wallHeight + (hz - L0.chimney.width / 2) * Math.tan(slope) - 0.2);
   });
-  it("los equipos de aire quedan sobre una losa pegada al zócalo del hastial +x", () => {
-    const { slab, units } = L0.acUnits;
-    close(slab.x - slab.w / 2, L0.hall.hx + BARBATOS_DIMENSIONS.plinth.overhang);
-    close(slab.z, -3.6);
-    expect(units).toHaveLength(2);
-    units.forEach((u) => {
-      close(u.x, slab.x);
-      close(u.y, slab.h + 0.275);
-      expect(Math.abs(u.z - slab.z)).toBeLessThan(slab.d / 2);
+  it("los equipos de aire quedan uno a cada lado del bloque, cada uno sobre su losa pegada al zócalo", () => {
+    const { pads, units } = L0.acUnits;
+    const { unit, pad } = BARBATOS_DIMENSIONS.acUnits;
+    expect(units.map((u) => u.z)).toEqual([-2.1, 2.1]);
+    expect(pads).toHaveLength(2);
+    units.forEach((u, i) => {
+      const p = pads[i];
+      close(p.x - p.w / 2, L0.hall.hx + BARBATOS_DIMENSIONS.plinth.overhang);
+      close(u.x, p.x);
+      close(u.z, p.z);
+      close(u.y, pad.h + unit.h / 2);
+      expect(p.w).toBeGreaterThan(u.w);
+      expect(p.d).toBeGreaterThan(u.d);
+      // fuera del bloque exterior
+      expect(Math.abs(u.z) - u.d / 2).toBeGreaterThan(L0.chimney.stack.width / 2);
     });
   });
   it("anexo, pérgola y galería", () => {
@@ -117,7 +123,7 @@ describe("anclaje: los elementos se mueven con su pared", () => {
     close(L30.chimney.x - L0.chimney.x, 6);
     close(L30.chimney.stack.x - L0.chimney.stack.x, 6);
     close(L30.chimney.flue.x - L0.chimney.flue.x, 6);
-    close(L30.acUnits.slab.x - L0.acUnits.slab.x, 6);
+    close(L30.acUnits.pads[0].x - L0.acUnits.pads[0].x, 6);
     expect(L30.gableWindows.map((g) => g.z)).toEqual([-3.2, 3.2]);
   });
   it("alargar L conserva la distancia de cada ventana del frente a su esquina", () => {
