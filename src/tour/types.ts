@@ -12,6 +12,9 @@ export type TourView = "out" | "in";
 export type TourController = {
   setView(view: TourView): void;
   setRoofVisible(visible: boolean): void;
+  // Cortinas de la galería: `open` = enrolladas. Sin cortinas en la escena, no hace nada.
+  readonly hasCurtains: boolean;
+  setCurtainsOpen(open: boolean, animate: boolean): void;
   dispose(): void;
 };
 
@@ -31,14 +34,14 @@ export type BuildContext<L> = EngineContext & { layout: L };
 export type SceneElement<L> = {
   id: string;
   group?: "root" | "roof";
-  // Pieza animable por el controlador (aún sin uso en el motor).
+  // Pieza animable por el controlador: el motor la expone en `curtains` y la excluye del merge.
   animates?: "curtains";
   build(ctx: BuildContext<L>): Object3D;
 };
 
 export type TourScene = {
   palette: { roof: string };
-  build(ctx: EngineContext): { root: Group; roofGroup: Group };
+  build(ctx: EngineContext): { root: Group; roofGroup: Group; curtains: Object3D[] };
   lights(quality: Quality): Object3D[];
   views: Record<TourView, CameraView>;
   background: string;

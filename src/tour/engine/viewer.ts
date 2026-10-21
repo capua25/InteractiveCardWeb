@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import type { Bounds, MountOptions, Quality, TourController, TourScene, TourView } from "../types";
+import { createCurtainRig, type FrameScheduler } from "./curtains";
 import { clampTarget, resolveViewPose } from "./camera";
 import { createMaterials } from "./materials";
 import { mergeByMaterial } from "./merge";
@@ -12,6 +13,7 @@ export type ViewerDeps = {
   createRenderer(quality: Quality): THREE.WebGLRenderer;
   createEnvironment(renderer: THREE.WebGLRenderer): { texture: THREE.Texture; dispose(): void };
   createTextures(maxAnisotropy: number): Textures;
+  frames: FrameScheduler;
 };
 
 const defaultDeps: ViewerDeps = {
@@ -30,6 +32,11 @@ const defaultDeps: ViewerDeps = {
     };
   },
   createTextures: makeTextures,
+  frames: {
+    request: (cb) => requestAnimationFrame(cb),
+    cancel: (id) => cancelAnimationFrame(id),
+    now: () => performance.now(),
+  },
 };
 
 // Recorta el target a la caja y mueve la cámara con el mismo delta: el pan se frena sin girar.
@@ -41,8 +48,8 @@ export function clampPan(target: THREE.Vector3, position: THREE.Vector3, bounds:
   position.set(position.x + dx, position.y + dy, position.z + dz);
 }
 
-// Visor con render on demand: solo se dibuja en `change` de los controles, resize, setView y
-// setRoofVisible. Sin loop de requestAnimationFrame ni damping.
+// Visor con render on demand: solo se dibuja en `change` de los controles, resize, setView,
+// setRoofVisible y setCurtainsOpen (que corre un rAF solo durante la animación). Sin damping.
 export function createViewer(
   container: HTMLElement,
   tourScene: TourScene,
@@ -111,7 +118,7 @@ export function createViewer(
         if ((o as THREE.Light).isLight) (o as THREE.Light).dispose();
       });
 
-    const { root, roofGroup } = tourScene.build({ materials, textures, primitives: createPrimitives(materials) });
+    const { root, roofGroup, curtains } = tourScene.build({ materials, textures, primitives: createPrimitives(materials) });
     mergeByMaterial(root, roofGroup);
     mergeByMaterial(roofGroup);
     root.traverse((o) => {
@@ -190,9 +197,15 @@ export function createViewer(
     setView("out");
     ready = true;
 
+    // Las cortinas (noMerge) siguen en sus grupos tras el merge; el rig solo corre mientras anima.
+    const rig = createCurtainRig(curtains, render, deps.frames);
+    undo.push(() => rig.dispose());
+
     let disposed = false;
     return {
       setView,
+      hasCurtains: rig.available,
+      setCurtainsOpen: (open, animate) => rig.set(open, animate),
       setRoofVisible(visible) {
         roofGroup.visible = visible;
         render();
@@ -200,6 +213,7 @@ export function createViewer(
       dispose() {
         if (disposed) return;
         disposed = true;
+        rig.dispose();
         observer.disconnect();
         controls.removeEventListener("change", onChange);
         controls.dispose();

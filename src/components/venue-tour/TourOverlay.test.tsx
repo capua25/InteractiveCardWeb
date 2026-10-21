@@ -13,7 +13,7 @@ vi.mock("@/tour/webgl", () => ({ hasWebGL: vi.fn(() => true) }));
 const loadTourSceneMock = vi.mocked(loadTourScene);
 const hasWebGLMock = vi.mocked(hasWebGL);
 
-const controller = { setView: vi.fn(), setRoofVisible: vi.fn(), dispose: vi.fn() };
+const controller = { setView: vi.fn(), setRoofVisible: vi.fn(), hasCurtains: true, setCurtainsOpen: vi.fn(), dispose: vi.fn() };
 const mount = vi.fn<TourModule["mount"]>(() => controller);
 
 const theme = { primary: "#112233", accent: "#445566", fontHeading: "serif" };

@@ -32,6 +32,10 @@ let deps: Partial<ViewerDeps>;
 let container: HTMLDivElement;
 let rootMesh: THREE.Mesh;
 let roofMesh: THREE.Mesh;
+let curtainGroup: THREE.Group;
+let curtainGeos: THREE.BufferGeometry[];
+let curtainMats: THREE.Material[];
+let frames: ViewerDeps["frames"] & { request: ReturnType<typeof vi.fn> };
 let scene: TourScene & { lights: ReturnType<typeof vi.fn<TourScene["lights"]>> };
 let onContextLost: ReturnType<typeof vi.fn<() => void>>;
 let observer: { observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> };
@@ -50,10 +54,17 @@ beforeEach(() => {
   renderer = fakeRenderer();
   env = { texture: new THREE.Texture(), dispose: vi.fn<() => void>() };
   createTextures = vi.fn<(maxAnisotropy: number) => Textures>(() => Object.fromEntries(KEYS.map((k) => [k, new THREE.Texture()])) as Textures);
+  frames = { request: vi.fn(() => 1), cancel: vi.fn(), now: () => 0 };
+  curtainGeos = [new THREE.BoxGeometry(), new THREE.BoxGeometry()];
+  curtainMats = [new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.5 })];
+  curtainGroup = new THREE.Group();
+  curtainGroup.userData.noMerge = true;
+  curtainGroup.add(new THREE.Mesh(curtainGeos[0], curtainMats[0]), new THREE.Mesh(curtainGeos[1], curtainMats[1]));
   deps = {
     createRenderer: () => renderer as unknown as THREE.WebGLRenderer,
     createEnvironment: () => env,
     createTextures,
+    frames,
   };
   container = document.createElement("div");
   document.body.append(container);
@@ -64,9 +75,9 @@ beforeEach(() => {
     build: () => {
       const root = new THREE.Group();
       const roofGroup = new THREE.Group();
-      root.add(roofGroup, rootMesh);
+      root.add(roofGroup, rootMesh, curtainGroup);
       roofGroup.add(roofMesh);
-      return { root, roofGroup };
+      return { root, roofGroup, curtains: [curtainGroup] };
     },
     lights: vi.fn<TourScene["lights"]>(() => [new THREE.HemisphereLight()]),
     views: {
@@ -104,6 +115,42 @@ describe("createViewer", () => {
     expect(canvas?.dataset.drawCalls).toBe("42");
     expect(canvas).toHaveAttribute("aria-hidden", "true");
     expect(canvas!.style.touchAction).toBe("none");
+  });
+
+  it("hasCurtains refleja los objetos de la escena", () => {
+    expect(createViewer(container, scene, quality, { onContextLost, deps }).hasCurtains).toBe(true);
+    const bare = { ...scene, build: () => ({ ...scene.build({} as never), curtains: [] }) };
+    const c = createViewer(container, bare, quality, { onContextLost, deps });
+    expect(c.hasCurtains).toBe(false);
+    renderer.render.mockClear();
+    c.setCurtainsOpen(false, false);
+    expect(renderer.render).not.toHaveBeenCalled();
+  });
+
+  it("setCurtainsOpen(false,false) baja las cortinas y renderiza una vez", () => {
+    const c = createViewer(container, scene, quality, { onContextLost, deps });
+    expect(curtainGroup.visible).toBe(false);
+    renderer.render.mockClear();
+    c.setCurtainsOpen(false, false);
+    expect(curtainGroup.scale.y).toBe(1);
+    expect(curtainGroup.visible).toBe(true);
+    expect(renderer.render).toHaveBeenCalledTimes(1);
+    expect(frames.request).not.toHaveBeenCalled();
+  });
+
+  it("las cortinas siguen en su grupo después del merge", () => {
+    createViewer(container, scene, quality, { onContextLost, deps });
+    expect(curtainGroup.children).toHaveLength(2);
+    expect(curtainGroup.parent).not.toBeNull();
+  });
+
+  it("dispose libera geometrías y materiales de las cortinas (noMerge) y cancela su animación", () => {
+    const c = createViewer(container, scene, quality, { onContextLost, deps });
+    c.setCurtainsOpen(false, true);
+    const spies = [...curtainGeos, ...curtainMats].map((r) => vi.spyOn(r, "dispose"));
+    c.dispose();
+    for (const spy of spies) expect(spy).toHaveBeenCalled();
+    expect(frames.cancel).toHaveBeenCalledWith(1);
   });
 
   it("aplica pixel ratio y tamaño de sombra de la calidad", () => {

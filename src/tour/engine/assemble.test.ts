@@ -20,4 +20,14 @@ describe("assembleElements", () => {
     expect(roofGroup.children.map((c) => c.name)).toEqual(["b"]);
     expect(roofGroup.parent).toBe(root);
   });
+
+  it("junta los objetos animates curtains y los marca noMerge", () => {
+    const curtain: SceneElement<null> = { ...fake("cortinas"), animates: "curtains" };
+    const { root, curtains } = assembleElements([fake("a"), curtain], { ...createTestEngineContext(), layout: null });
+    expect(curtains).toHaveLength(1);
+    expect(curtains[0].name).toBe("cortinas");
+    expect(curtains[0].userData.noMerge).toBe(true);
+    expect(curtains[0].parent).toBe(root);
+    expect(root.getObjectByName("a")!.userData.noMerge).toBeUndefined();
+  });
 });
