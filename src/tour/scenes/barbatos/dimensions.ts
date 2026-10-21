@@ -5,7 +5,7 @@
 
 export type CornerRef = "front-left" | "front-right";
 
-export const ROOF_COLOR = "#3b4f66";
+export const ROOF_COLOR = "#6b6e75";
 
 export type BarbatosDimensions = {
   // Salón: largo en x, ancho en z.

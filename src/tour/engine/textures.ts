@@ -53,7 +53,7 @@ export function makeTextures(maxAnisotropy: number): Textures {
 
   const stone = tex(256, (g, s) => {
     const R = rng(7);
-    g.fillStyle = "#4f4a43";
+    g.fillStyle = "#2f3438";
     g.fillRect(0, 0, s, s);
     let y = 0;
     while (y < s) {
@@ -61,7 +61,8 @@ export function makeTextures(maxAnisotropy: number): Textures {
       let x = -R() * 30;
       while (x < s) {
         const rw = 28 + R() * 34;
-        g.fillStyle = `hsl(${25 + R() * 15},${6 + R() * 14}%,${42 + R() * 22}%)`;
+        g.fillStyle = `hsl(${200 + R() * 15},${6 + R() * 4}%,${28 + R() * 14}%)`;
+        if (R() < 0.08) g.fillStyle = "#8a5a3c";
         g.beginPath();
         g.roundRect(x + 2, y + 2, rw - 4, rh - 4, 6 + R() * 6);
         g.fill();
@@ -102,11 +103,11 @@ export function makeTextures(maxAnisotropy: number): Textures {
   });
 
   const gravel = tex(256, (g, s) => {
-    g.fillStyle = "#b4b2aa";
+    g.fillStyle = "#9a948c";
     g.fillRect(0, 0, s, s);
     const R = rng(11);
     for (let i = 0; i < 4000; i++) {
-      const v = (120 + R() * 110) | 0;
+      const v = (110 + R() * 90) | 0;
       g.fillStyle = `rgb(${v},${v - 3},${v - 8})`;
       g.beginPath();
       g.arc(R() * s, R() * s, 0.8 + R() * 2, 0, 7);
@@ -115,14 +116,21 @@ export function makeTextures(maxAnisotropy: number): Textures {
   });
 
   const plaster = tex(256, (g, s) => {
-    g.fillStyle = "#c06a55";
+    g.fillStyle = "#8a3a2b";
     g.fillRect(0, 0, s, s);
-    noise(g, s, 6000, 2, ["#e08a72", "#9d4532"], 0.12);
+    noise(g, s, 6000, 2, ["#a04a34", "#6e2a20"], 0.12);
   });
   const wallLow = tex(256, (g, s) => {
-    g.fillStyle = "#d9d2c4";
+    g.fillStyle = "#a8a296";
     g.fillRect(0, 0, s, s);
-    noise(g, s, 5000, 2, ["#fff", "#9a9284"], 0.12);
+    noise(g, s, 5000, 2, ["#b4aea2", "#9a9488"], 0.12);
+    // juntas de mortero gris: hiladas de 16 px, bloques de 32 px alternados
+    g.fillStyle = "#7f7b74";
+    for (let row = 0; row < s / 16; row++) {
+      g.fillRect(0, row * 16, s, 1);
+      const off = row % 2 ? 16 : 0;
+      for (let x = off; x < s; x += 32) g.fillRect(x, row * 16, 1, 16);
+    }
   });
   const cement = tex(256, (g, s) => {
     g.fillStyle = "#cdc9c0";
@@ -131,9 +139,22 @@ export function makeTextures(maxAnisotropy: number): Textures {
     noise(g, s, 40, 30, ["#bdb8ad"], 0.15);
   });
   const grass = tex(256, (g, s) => {
-    g.fillStyle = "#6a8a48";
+    g.fillStyle = "#7a8a3e";
     g.fillRect(0, 0, s, s);
-    noise(g, s, 9000, 2, ["#86a85a", "#4f6e35", "#7a9a4c"], 0.5);
+    for (let i = 0; i < 4; i++) {
+      g.fillStyle = i % 2 ? "rgba(0,0,0,.05)" : "rgba(255,255,255,.05)";
+      g.fillRect(0, i * 64, s, 64);
+    }
+    const R = rng(21);
+    g.globalAlpha = 0.25;
+    g.fillStyle = "#9a9a58";
+    for (let i = 0; i < 40; i++) {
+      g.beginPath();
+      g.arc(R() * s, R() * s, 18, 0, 7);
+      g.fill();
+    }
+    g.globalAlpha = 1;
+    noise(g, s, 9000, 2, ["#8a9a4c", "#5f6f30"], 0.5);
   });
   const carpet = tex(128, (g, s) => {
     g.fillStyle = "#962020";
