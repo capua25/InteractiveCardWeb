@@ -5,7 +5,7 @@ import { BARBATOS_DIMENSIONS } from "../dimensions";
 import { BARBATOS_LAYOUT, computeLayout } from "../layout";
 import { CURTAIN_ROLLED_SCALE } from "@/tour/engine/curtains";
 import { ELEMENTS } from "./index";
-import { backgroundTrees, treeCrowns, crownGeometry } from "./vegetation";
+import { treeCrowns, crownGeometry } from "./vegetation";
 
 const ctx = { ...createTestEngineContext(), layout: BARBATOS_LAYOUT };
 
@@ -300,24 +300,23 @@ describe("ELEMENTS de Barbato's", () => {
       parkObj.traverse((o) => { if ((o as THREE.Mesh).isMesh && (o as THREE.Mesh).material === ctx.materials("trunk")) crowns++; });
       expect(crowns).toBe(0);
     });
-    it("los árboles de fondo quedan fuera del lote", () => {
-      const { lot } = BARBATOS_LAYOUT;
-      const trees = backgroundTrees(BARBATOS_LAYOUT);
-      expect(trees).toHaveLength(18);
-      for (const t of trees) {
-        expect(t.height).toBeGreaterThanOrEqual(6);
-        expect(t.height).toBeLessThanOrEqual(10);
-        const inX = t.x + t.radius > -lot.halfWidth && t.x - t.radius < lot.halfWidth;
-        const inZ = t.z - t.radius < lot.zFront && t.z + t.radius > lot.zBack;
-        expect(inX && inZ, `árbol ${t.x},${t.z} r${t.radius}`).toBe(false);
-      }
-      const bg = veg().find((m) => m.material === ctx.materials("crownDark") && !(m as THREE.InstancedMesh).isInstancedMesh)!;
-      expect(bg).toBeDefined();
-      expect(bg.userData.noShadow).toBe(true);
-      const pos = bg.geometry.getAttribute("position");
-      for (let i = 0; i < pos.count; i++) {
-        const inLot = Math.abs(pos.getX(i)) < lot.halfWidth && pos.getZ(i) > lot.zBack;
-        expect(inLot).toBe(false);
+    it("no hay árboles fuera del muro ni conífera junto a la chimenea", () => {
+      const { lot, hall } = BARBATOS_LAYOUT;
+      for (const m of veg()) {
+        m.geometry.computeBoundingBox();
+        const inst = (m as THREE.InstancedMesh).isInstancedMesh ? (m as THREE.InstancedMesh) : null;
+        const n = inst ? inst.count : 1;
+        const mat = new THREE.Matrix4();
+        for (let i = 0; i < n; i++) {
+          if (inst) inst.getMatrixAt(i, mat);
+          else mat.identity();
+          const p = new THREE.Vector3().setFromMatrixPosition(mat);
+          expect(Math.abs(p.x), `${p.x},${p.z}`).toBeLessThan(lot.halfWidth);
+          expect(p.z).toBeGreaterThan(lot.zBack);
+          expect(p.z).toBeLessThan(lot.zFront);
+          // nada plantado en la franja del hastial +x (donde estaba la conífera)
+          expect(p.x > hall.hx && p.x < hall.hx + 9 && Math.abs(p.z) < hall.hz, `${p.x},${p.z}`).toBe(false);
+        }
       }
     });
   });

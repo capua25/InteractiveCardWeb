@@ -94,9 +94,7 @@ export type BarbatosDimensions = {
     phormiums: { count: number; fromSideWall: number; zStart: number; endFromBackWall: number };
     willows: { dx: number; dz: number }[];
     willowHeight: number;
-    conifer: { fromHallEnd: number; z: number; height: number }; // x a `fromHallEnd` del hastial +x; z sobre el eje del hogar
     photinia: { fromSideWall: number; behindGallery: number; height: number }; // contra el muro +x; detrás del borde del techo de la galería
-    background: { seed: number; count: number; minHeight: number; maxHeight: number };
   };
   // Guirnalda hexagonal: 6 postes en los vértices de la arena; `hangBelowTop` es el enganche bajo la punta del poste.
   garland: { poleHeight: number; hangBelowTop: number; sag: number; bulbSpacing: number };
@@ -214,9 +212,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
     phormiums: { count: 8, fromSideWall: 2.2, zStart: -16, endFromBackWall: 3 },
     willows: [{ dx: -6.3, dz: 2.55 }, { dx: -5.5, dz: -4.15 }, { dx: -6.45, dz: -1.9 }, { dx: 6.5, dz: -2.65 }],
     willowHeight: 3.2,
-    conifer: { fromHallEnd: 6, z: 0, height: 6 },
     photinia: { fromSideWall: 2.5, behindGallery: 5.65, height: 4.5 },
-    background: { seed: 21, count: 18, minHeight: 6, maxHeight: 10 },
   },
   garland: { poleHeight: 2.8, hangBelowTop: 0.05, sag: 0.5, bulbSpacing: 0.375 },
   firePit: { fromHallLeft: 0, fromBackWall: 7, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 5 },

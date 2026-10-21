@@ -284,13 +284,11 @@ describe("layout de Barbato's con medidas reales", () => {
       [[-15.3, -32.8, 3.2], [-14.5, -39.5, 3.2], [-15.45, -37.25, 3.2], [-2.5, -38, 3.2]].map((r) => r.map((n) => expect.closeTo(n, 6))),
     );
     expect(v.tallSaplings.map((t) => [t.x, t.z, t.height])).toEqual([[5, -31, 6], [-8, -25, 5.5]].map((r) => r.map((n) => expect.closeTo(n, 6))));
-    close(v.conifer.x, 15);
-    close(v.conifer.z, 0);
-    expect(v.conifer.height).toBe(6);
     close(v.photinia.x, 16.5);
     close(v.photinia.z, -16);
     expect(v.photinia.height).toBe(4.5);
-    expect(v.background).toEqual({ seed: 21, count: 18, minHeight: 6, maxHeight: 10 });
+    expect("conifer" in v).toBe(false);
+    expect("background" in v).toBe(false);
   });
   it("la vegetación respeta lote, edificio y arena", () => expectParkClear(L0));
   it("los sauces no pisan la columna de álamos", () => {
@@ -379,7 +377,6 @@ describe("parque con medidas cambiadas", () => {
     const L = computeLayout(d);
     close(L.firePit.x, -L.hall.hx);
     close(L.firePit.z, L.lot.zBack + 7);
-    close(L.vegetation.conifer.x, L.hall.hx + 6);
     close(L.vegetation.photinia.x, L.lot.halfWidth - 2.5);
     close(L.vegetation.willows[0].z - L.firePit.z, 2.55);
     expectParkClear(L);

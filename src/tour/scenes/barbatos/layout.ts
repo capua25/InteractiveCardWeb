@@ -78,9 +78,7 @@ export type BarbatosLayout = {
     poplars: { x: number; z: number; height: number }[];
     phormiums: { x: number; z: number }[];
     willows: { x: number; z: number; height: number }[];
-    conifer: { x: number; z: number; height: number };
     photinia: { x: number; z: number; height: number };
-    background: { seed: number; count: number; minHeight: number; maxHeight: number };
   };
   firePit: { x: number; z: number; ringRadius: number; ringHeight: number; basketRadius: number; sandRadius: number; sandVertices: { x: number; z: number }[] };
   // `outline`: polígono cerrado del pedregullo (x, z), denso; arranca en la esquina -x sobre el frente del edificio.
@@ -385,9 +383,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
       z: along(i, vg.phormiums.count, vg.phormiums.zStart, zBack + vg.phormiums.endFromBackWall),
     })),
     willows: vg.willows.map((w) => ({ x: firePit.x + w.dx, z: firePit.z + w.dz, height: vg.willowHeight })),
-    conifer: { x: hx + vg.conifer.fromHallEnd, z: vg.conifer.z, height: vg.conifer.height },
     photinia: { x: halfWidth - vg.photinia.fromSideWall, z: gallery.zRoofOuter - vg.photinia.behindGallery, height: vg.photinia.height },
-    background: vg.background,
   };
 
   // Guirnalda: un poste por vértice de la arena; el cable cuelga 5 cm bajo la punta.
