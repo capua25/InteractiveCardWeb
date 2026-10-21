@@ -1,4 +1,5 @@
 import type { Bounds, Vec3 } from "@/tour/types";
+import { rng } from "@/tour/engine/textures";
 import { BARBATOS_DIMENSIONS, type BarbatosDimensions } from "./dimensions";
 
 export type { Bounds, Vec3 };
@@ -82,10 +83,13 @@ export type BarbatosLayout = {
   };
   firePit: { x: number; z: number; ringRadius: number; ringHeight: number; basketRadius: number; sandRadius: number; sandVertices: { x: number; z: number }[] };
   patio: { x: number; z: number; width: number; depth: number };
+  forecourt: { border: { x: number; z: number; size: number }[]; lavender: { x: number; z: number }[] };
   tables: TableSpot[];
   pointLights: Vec3[];
   targetBounds: Bounds;
 };
+
+const FORECOURT_SEED = 15;
 
 /**
  * Tramos de zócalo entre `min` y `max`, cortados por `cuts` (centro y ancho).
@@ -352,6 +356,23 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     depth: d.patio.depth,
   };
 
+  // Borde de piedras: Bézier cuadrática desde la esquina delantera del lado `side` del pedregullo, abombada hacia
+  // afuera y cerrando hacia adentro al fondo; lavandas en cada `lavenderEvery`-ésima piedra, corridas hacia afuera.
+  const fc = d.forecourt;
+  const edgeX = patio.x + (fc.side * patio.width) / 2;
+  const bez = (t: number, a: number, b: number, c: number) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * c;
+  const R = rng(FORECOURT_SEED);
+  const border = Array.from({ length: fc.stones }, (_, i) => {
+    const t = fc.stones > 1 ? i / (fc.stones - 1) : 0;
+    return {
+      x: bez(t, edgeX, edgeX + fc.side * 1.5, edgeX - fc.side * 2),
+      z: bez(t, hz + 0.5, hz + patio.depth / 2, hz + patio.depth - 0.5),
+      size: fc.stoneSize[0] + (fc.stoneSize[1] - fc.stoneSize[0]) * R(),
+    };
+  });
+  const lavender = border.filter((_, i) => i % fc.lavenderEvery === 0).map((b) => ({ x: b.x + fc.side * fc.lavenderOffset, z: b.z }));
+  const forecourt = { border, lavender };
+
   // Mesas: filas desde el muro izquierdo exterior, a fromLongWall de cada muro largo; frente primero.
   const tables: TableSpot[] = [];
   d.tables.rowsFromLeftWall.forEach((off, i) => {
@@ -400,6 +421,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     firePit,
     vegetation,
     patio,
+    forecourt,
     tables,
     pointLights,
     targetBounds,

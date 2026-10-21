@@ -17,7 +17,7 @@ describe("ELEMENTS de Barbato's", () => {
 
   it("registra los elementos del v6 en orden", () => {
     expect(ELEMENTS.map((e) => e.id)).toEqual([
-      "ground", "patio", "front-wall", "back-wall", "gables", "plinth", "floor", "chimney", "ac-units", "trusses",
+      "ground", "patio", "forecourt", "front-wall", "back-wall", "gables", "plinth", "floor", "chimney", "ac-units", "trusses",
       "roof", "annex", "annex-roof", "pergola", "gallery", "gallery-roof", "gallery-curtains", "park", "fire-pit", "vegetation", "garland", "tables",
     ]);
   });
@@ -39,6 +39,22 @@ describe("ELEMENTS de Barbato's", () => {
       else if ((o as THREE.Mesh).isMesh) plain++;
     });
     expect(instanced.filter((m) => m.material === ctx.materials("chair")).map((m) => m.count)).toEqual([60, 60]);
+    expect(plain).toBe(0);
+  });
+
+  it("forecourt: 3 InstancedMesh (piedras, matas, flores) y ningún mesh suelto", () => {
+    const obj = ELEMENTS.find((e) => e.id === "forecourt")!.build(ctx);
+    const instanced: THREE.InstancedMesh[] = [];
+    let plain = 0;
+    obj.traverse((o) => {
+      if ((o as THREE.InstancedMesh).isInstancedMesh) instanced.push(o as THREE.InstancedMesh);
+      else if ((o as THREE.Mesh).isMesh) plain++;
+    });
+    expect(instanced.map((m) => [m.material, m.count])).toEqual([
+      [ctx.materials("stone"), 25],
+      [ctx.materials("lavender"), 13],
+      [ctx.materials("lavenderFlower"), 13],
+    ]);
     expect(plain).toBe(0);
   });
 

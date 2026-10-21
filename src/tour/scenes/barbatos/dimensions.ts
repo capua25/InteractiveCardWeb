@@ -104,6 +104,9 @@ export type BarbatosDimensions = {
   firePit: { x: number; fromBackWall: number; ringDiameter: number; ringHeight: number; basketDiameter: number; sandRadius: number };
   // Pedregullo desde el frente.
   patio: { width: number; depth: number; xOffset: number };
+  // Borde de piedras en curva sobre el lado `side` del pedregullo (+1 = lado de la chimenea, -1 = opuesto) y lavandas
+  // en cada `lavenderEvery`-ésima piedra, corridas `lavenderOffset` hacia afuera del patio.
+  forecourt: { side: 1 | -1; stones: number; stoneSize: [number, number]; lavenderEvery: number; lavenderOffset: number };
   // Filas desde el muro izquierdo exterior; mesas a `fromLongWall` de cada muro largo.
   tables: { rowsFromLeftWall: number[]; fromLongWall: number };
   pointLights: {
@@ -201,6 +204,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   garland: { poleHeight: 2.8, hangBelowTop: 0.05, sag: 0.5, bulbSpacing: 0.375 },
   firePit: { x: -9, fromBackWall: 7, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 5 },
   patio: { width: 30, depth: 10, xOffset: -2 },
+  forecourt: { side: 1, stones: 25, stoneSize: [0.4, 0.6], lavenderEvery: 2, lavenderOffset: 0.9 },
   tables: { rowsFromLeftWall: [2.5, 5.5, 8.5, 11.5, 14.5], fromLongWall: 2.6 },
   pointLights: {
     frontAhead: 0.8,

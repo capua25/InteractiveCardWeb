@@ -5,6 +5,41 @@ import { BARBATOS_LAYOUT, computeLayout, hexagonVertices } from "./layout";
 const L0 = BARBATOS_LAYOUT;
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 4);
 
+describe("borde de piedras del patio", () => {
+  const { hz } = L0.hall;
+  const edge = (side: 1 | -1) => L0.patio.x + (side * L0.patio.width) / 2;
+  it("25 piedras de borde en el lado de la chimenea dentro del lote", () => {
+    const { border, lavender } = L0.forecourt;
+    expect(border).toHaveLength(25);
+    expect(lavender).toHaveLength(13);
+    for (const s of border) {
+      expect(s.x).toBeLessThan(L0.lot.halfWidth);
+      expect(s.x).toBeGreaterThan(edge(1) - 2.1);
+      expect(s.z).toBeGreaterThanOrEqual(hz);
+      expect(s.z).toBeLessThanOrEqual(L0.lot.zFront);
+      expect(s.size).toBeGreaterThanOrEqual(0.4);
+      expect(s.size).toBeLessThanOrEqual(0.6);
+    }
+  });
+  it("nada bloquea la entrada abierta del frente", () => {
+    const { x0, x1 } = L0.lot.entrance;
+    for (const s of [...L0.forecourt.border, ...L0.forecourt.lavender]) expect(s.x < x0 || s.x > x1).toBe(true);
+  });
+  it("side = -1 espeja el borde hacia el lado opuesto", () => {
+    const L = computeLayout({ ...BARBATOS_DIMENSIONS, forecourt: { ...BARBATOS_DIMENSIONS.forecourt, side: -1 } });
+    const { border, lavender } = L.forecourt;
+    expect(border).toHaveLength(25);
+    for (const s of border) {
+      expect(s.x).toBeGreaterThan(-L.lot.halfWidth);
+      expect(s.x).toBeLessThan(edge(-1) + 2.1);
+    }
+    close(border[0].x, edge(-1));
+    close(lavender[0].x, edge(-1) - 0.9);
+    close(L0.forecourt.border[0].x, edge(1));
+    close(L0.forecourt.lavender[0].x, edge(1) + 0.9);
+  });
+});
+
 describe("layout de Barbato's con medidas reales", () => {
   it("salón y aberturas del frente", () => {
     expect(L0.hall).toMatchObject({ hx: 9, hz: 5, wallHeight: 3.5, ridgeHeight: 6.4, wallThickness: 0.3 });

@@ -7,6 +7,7 @@ import { backWall } from "./back-wall";
 import { chimney } from "./chimney";
 import { firePit } from "./fire-pit";
 import { floor } from "./floor";
+import { forecourt } from "./forecourt";
 import { frontWall } from "./front-wall";
 import { gables } from "./gables";
 import { gallery } from "./gallery";
@@ -27,6 +28,7 @@ import { vegetation } from "./vegetation";
 export const ELEMENTS: readonly SceneElement<BarbatosLayout>[] = [
   ground,
   patio,
+  forecourt,
   frontWall,
   backWall,
   gables,
