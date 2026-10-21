@@ -24,9 +24,12 @@ export type TourModule = { mount(container: HTMLElement, options: MountOptions):
 
 export type CameraView = { pos: Vec3; target: Vec3 };
 
-export type Quality = { pixelRatio: number; shadowMapSize: number; antialias: boolean; maxAnisotropy: number };
+// Nivel de detalle de la geometría procedural (más segmentos en desktop, menos en celulares).
+export type GeometryDetail = "high" | "low";
 
-export type EngineContext = { materials: MaterialFactory; textures: Textures; primitives: Primitives };
+export type Quality = { pixelRatio: number; shadowMapSize: number; antialias: boolean; maxAnisotropy: number; detail: GeometryDetail };
+
+export type EngineContext = { materials: MaterialFactory; textures: Textures; primitives: Primitives; detail?: GeometryDetail };
 
 export type BuildContext<L> = EngineContext & { layout: L };
 

@@ -9,6 +9,7 @@ export function pickQuality(input: { coarsePointer: boolean; width: number; dpr:
     shadowMapSize: mobile ? 1024 : 2048,
     antialias: true,
     maxAnisotropy: 4, // tope; el viewer lo cruza con el de la GPU
+    detail: mobile ? "low" : "high",
   };
 }
 

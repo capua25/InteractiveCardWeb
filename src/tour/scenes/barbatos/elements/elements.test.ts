@@ -5,7 +5,7 @@ import { BARBATOS_DIMENSIONS } from "../dimensions";
 import { BARBATOS_LAYOUT, computeLayout } from "../layout";
 import { CURTAIN_ROLLED_SCALE } from "@/tour/engine/curtains";
 import { ELEMENTS } from "./index";
-import { backgroundTrees } from "./vegetation";
+import { backgroundTrees, treeCrowns, crownGeometry } from "./vegetation";
 
 const ctx = { ...createTestEngineContext(), layout: BARBATOS_LAYOUT };
 
@@ -222,6 +222,36 @@ describe("ELEMENTS de Barbato's", () => {
     it("vegetation usa a lo sumo 9 draw calls", () => {
       expect(veg().length).toBeLessThanOrEqual(9);
     });
+    it("ninguna copa toca la arena hexagonal ni un poste de la guirnalda (≥0.5 m)", () => {
+      const { sandVertices: hex, x: cx, z: cz, sandRadius } = BARBATOS_LAYOUT.firePit;
+      const segDist = (px: number, pz: number, a: { x: number; z: number }, b: { x: number; z: number }) => {
+        const dx = b.x - a.x, dz = b.z - a.z;
+        const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (pz - a.z) * dz) / (dx * dx + dz * dz)));
+        return Math.hypot(px - (a.x + t * dx), pz - (a.z + t * dz));
+      };
+      for (const c of treeCrowns(BARBATOS_LAYOUT)) {
+        const inside = Math.hypot(c.x - cx, c.z - cz) < sandRadius * Math.cos(Math.PI / 6);
+        expect(inside, `centro dentro ${c.x},${c.z}`).toBe(false);
+        for (let k = 0; k < 6; k++) {
+          expect(segDist(c.x, c.z, hex[k], hex[(k + 1) % 6]) - c.radius, `arena ${c.x},${c.z}`).toBeGreaterThanOrEqual(0.5);
+          expect(Math.hypot(c.x - hex[k].x, c.z - hex[k].z) - c.radius, `poste ${c.x},${c.z}`).toBeGreaterThanOrEqual(0.5);
+        }
+      }
+    });
+    it("los álamos (con jitter) quedan dentro del muro izquierdo", () => {
+      for (const p of BARBATOS_LAYOUT.vegetation.poplars) expect(p.x - 0.7 * 1.15).toBeGreaterThan(-BARBATOS_LAYOUT.lot.halfWidth + BARBATOS_LAYOUT.lot.wallThickness / 2);
+    });
+    it("las copas de alto detalle tienen más vértices que las de bajo", () => {
+      expect(crownGeometry("high").getAttribute("position").count).toBeGreaterThan(crownGeometry("low").getAttribute("position").count);
+    });
+    it("el detalle no cambia la cantidad de meshes (draw calls)", () => {
+      const count = (detail: "high" | "low") => {
+        let n = 0;
+        ELEMENTS.find((e) => e.id === "vegetation")!.build({ ...ctx, detail }).traverse((o) => { if ((o as THREE.Mesh).isMesh) n++; });
+        return n;
+      };
+      expect(count("high")).toBe(count("low"));
+    });
     it("park ya no planta árboles", () => {
       const parkObj = ELEMENTS.find((e) => e.id === "park")!.build(ctx);
       let crowns = 0;
@@ -233,8 +263,8 @@ describe("ELEMENTS de Barbato's", () => {
       const trees = backgroundTrees(BARBATOS_LAYOUT);
       expect(trees).toHaveLength(18);
       for (const t of trees) {
-        expect(t.height).toBeGreaterThanOrEqual(12);
-        expect(t.height).toBeLessThanOrEqual(15);
+        expect(t.height).toBeGreaterThanOrEqual(6);
+        expect(t.height).toBeLessThanOrEqual(10);
         const inX = t.x + t.radius > -lot.halfWidth && t.x - t.radius < lot.halfWidth;
         const inZ = t.z - t.radius < lot.zFront && t.z + t.radius > lot.zBack;
         expect(inX && inZ, `árbol ${t.x},${t.z} r${t.radius}`).toBe(false);
@@ -266,7 +296,7 @@ describe("ELEMENTS de Barbato's", () => {
       const sand = pit().filter((m) => m.material === ctx.materials("sand"));
       expect(sand).toHaveLength(1);
       expect((sand[0].geometry as THREE.CircleGeometry).parameters.segments).toBe(6);
-      expect((sand[0].geometry as THREE.CircleGeometry).parameters.radius).toBe(3.5);
+      expect((sand[0].geometry as THREE.CircleGeometry).parameters.radius).toBe(5);
       expect(sand[0].userData.noShadow).toBe(true);
     });
     it("fire-pit: disco de brasa, canasto abierto, 4 leños y brasas sin sombra", () => {
@@ -292,12 +322,13 @@ describe("ELEMENTS de Barbato's", () => {
       });
       return found!;
     };
+    const STEPS = Math.round(5 / BARBATOS_DIMENSIONS.garland.bulbSpacing); // lado = circunradio = 5
     const bulbPositions = () => {
       const m = bulbMesh();
       const mat = new THREE.Matrix4();
       return Array.from({ length: m.count }, (_, i) => new THREE.Vector3().setFromMatrixPosition(m.getMatrixAt(i, mat)));
     };
-    it("guirnalda: 6 postes de 2.8, 54 bombitas y nada hacia la galería", () => {
+    it("guirnalda: 6 postes de 2.8, 13 bombitas por lado y nada hacia la galería", () => {
       const poles: THREE.Mesh[] = [];
       build().traverse((o) => {
         const m = o as THREE.Mesh;
@@ -307,15 +338,15 @@ describe("ELEMENTS de Barbato's", () => {
       for (const p of poles) expect((p.geometry as THREE.CylinderGeometry).parameters.height).toBe(2.8);
       const f = BARBATOS_LAYOUT.firePit;
       const bulbs = bulbPositions();
-      expect(bulbMesh().count).toBe(54);
-      for (const b of bulbs) expect(Math.hypot(b.x - f.x, b.z - f.z)).toBeLessThanOrEqual(3.5 + 1e-6);
+      expect(bulbMesh().count).toBe(6 * STEPS);
+      for (const b of bulbs) expect(Math.hypot(b.x - f.x, b.z - f.z)).toBeLessThanOrEqual(5 + 1e-6);
       expect(Math.min(...bulbs.map((b) => b.y))).toBeGreaterThanOrEqual(2.2);
     });
     it("cada tramo une vértices adyacentes", () => {
       const bulbs = bulbPositions();
       BARBATOS_LAYOUT.park.garland.poles.forEach((p, k) => {
-        expect(bulbs[k * 9].x).toBeCloseTo(p.x, 4);
-        expect(bulbs[k * 9].z).toBeCloseTo(p.z, 4);
+        expect(bulbs[k * STEPS].x).toBeCloseTo(p.x, 4);
+        expect(bulbs[k * STEPS].z).toBeCloseTo(p.z, 4);
       });
     });
   });

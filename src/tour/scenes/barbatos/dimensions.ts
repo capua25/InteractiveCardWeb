@@ -86,6 +86,9 @@ export type BarbatosDimensions = {
   // Vegetación del parque; las posiciones absolutas salen del layout (z relativas al muro del fondo).
   vegetation: {
     saplings: { xs: number[]; heights: number[]; fromBackWall: number };
+    wallRow: { xs: number[]; height: number; radius: number; fromBackWall: number };
+    tallSaplings: { x: number; z: number; height: number }[];
+    tallCrownRadius: number;
     poplars: { count: number; fromSideWall: number; zStart: number; endFromBackWall: number; baseHeight: number; heightStep: number; heightCycle: number };
     phormiums: { count: number; fromSideWall: number; zStart: number; endFromBackWall: number };
     willows: { x: number; z: number }[];
@@ -96,9 +99,9 @@ export type BarbatosDimensions = {
   };
   // Guirnalda hexagonal: 6 postes en los vértices de la arena; `hangBelowTop` es el enganche bajo la punta del poste.
   garland: { poleHeight: number; hangBelowTop: number; sag: number; bulbSpacing: number };
-  // Fogón sobre arena hexagonal: `fromGallery` detrás del borde del techo de la galería; `sandRadius` es el
+  // Fogón sobre arena hexagonal: `x` en el cruce galería/anexo y `fromBackWall` desde el muro del fondo; `sandRadius` es el
   // circunradio (centro→vértice) del hexágono, alineado con los 6 postes de la guirnalda.
-  firePit: { fromGallery: number; ringDiameter: number; ringHeight: number; basketDiameter: number; sandRadius: number };
+  firePit: { x: number; fromBackWall: number; ringDiameter: number; ringHeight: number; basketDiameter: number; sandRadius: number };
   // Pedregullo desde el frente.
   patio: { width: number; depth: number; xOffset: number };
   // Filas desde el muro izquierdo exterior; mesas a `fromLongWall` de cada muro largo.
@@ -183,17 +186,20 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.8 },
   gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3, curtains: { skirtHeight: 0.9, rollRadius: 0.08, offset: 0.08 } },
   vegetation: {
-    saplings: { xs: [-15, -9, -3, 3, 9, 15], heights: [2.5, 3.5, 2, 4, 3, 2.8], fromBackWall: 1.5 },
-    poplars: { count: 22, fromSideWall: 1.2, zStart: -14, endFromBackWall: 1, baseHeight: 5, heightStep: 0.5, heightCycle: 3 },
+    saplings: { xs: [-3, 1.5, 6, 10.5, 15], heights: [2.5, 2.2, 3.0, 2.4, 2.8], fromBackWall: 1.2 },
+    wallRow: { xs: [-0.8, 3.8, 8.3, 12.8, 17.2], height: 3.2, radius: 0.25, fromBackWall: 0.8 },
+    tallSaplings: [{ x: 5, z: -31, height: 6 }, { x: -8, z: -25, height: 5.5 }],
+    tallCrownRadius: 1.2,
+    poplars: { count: 22, fromSideWall: 1.2, zStart: -14, endFromBackWall: 1, baseHeight: 4.5, heightStep: 0.4, heightCycle: 3 },
     phormiums: { count: 8, fromSideWall: 2.2, zStart: -16, endFromBackWall: 3 },
-    willows: [{ x: -8, z: -29 }, { x: 7, z: -36 }, { x: -5, z: -39 }, { x: 9, z: -28 }],
-    willowHeight: 6,
-    conifer: { x: 4, z: -40.5, height: 7 },
+    willows: [{ x: -15.3, z: -32.8 }, { x: -14.5, z: -39.5 }, { x: -16, z: -36.2 }, { x: -2.5, z: -38 }],
+    willowHeight: 3.2,
+    conifer: { x: 15, z: 0, height: 6 },
     photinia: { x: 16.5, z: -16, height: 4.5 },
-    background: { seed: 21, count: 18, minHeight: 12, maxHeight: 15 },
+    background: { seed: 21, count: 18, minHeight: 6, maxHeight: 10 },
   },
   garland: { poleHeight: 2.8, hangBelowTop: 0.05, sag: 0.5, bulbSpacing: 0.375 },
-  firePit: { fromGallery: 22, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 3.5 },
+  firePit: { x: -9, fromBackWall: 7, ringDiameter: 2.4, ringHeight: 0.55, basketDiameter: 0.8, sandRadius: 5 },
   patio: { width: 30, depth: 10, xOffset: -2 },
   tables: { rowsFromLeftWall: [2.5, 5.5, 8.5, 11.5, 14.5], fromLongWall: 2.6 },
   pointLights: {

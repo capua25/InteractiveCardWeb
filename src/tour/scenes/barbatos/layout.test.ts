@@ -130,13 +130,12 @@ describe("layout de Barbato's con medidas reales", () => {
       close(Math.hypot(n.x - p.x, n.z - p.z), 3.5);
     });
   });
-  it("el fogón está a 22 del borde de la galería y a 10 del muro del fondo", () => {
+  it("el fogón está en x=-9 y a 7 del muro del fondo, con arena de circunradio 5", () => {
     const f = L0.firePit;
-    close(f.z, -32.35);
-    close(f.z, L0.gallery.zRoofOuter - 22);
-    close(f.z - L0.lot.zBack, 10);
-    expect(f).toMatchObject({ x: 0, ringRadius: 1.2, ringHeight: 0.55, basketRadius: 0.4, sandRadius: 3.5 });
-    expect(f.sandVertices).toEqual(hexagonVertices(f.x, f.z, 3.5));
+    close(f.z, -35.35);
+    close(f.z - L0.lot.zBack, 7);
+    expect(f).toMatchObject({ x: -9, ringRadius: 1.2, ringHeight: 0.55, basketRadius: 0.4, sandRadius: 5 });
+    expect(f.sandVertices).toEqual(hexagonVertices(f.x, f.z, 5));
   });
   it("los postes de la guirnalda son los vértices de la arena", () => {
     expect(L0.park.garland).toEqual({ poles: L0.firePit.sandVertices, poleHeight: 2.8, hangY: 2.75, sag: 0.5, bulbSpacing: 0.375 });
@@ -151,24 +150,27 @@ describe("layout de Barbato's con medidas reales", () => {
   it("vegetación: plantines, álamos, formios, sauces, conífera y fotinia en coordenadas absolutas", () => {
     const v = L0.vegetation;
     const zb = L0.lot.zBack;
-    expect(v.saplings.map((s) => [s.x, s.height])).toEqual([[-15, 2.5], [-9, 3.5], [-3, 2], [3, 4], [9, 3], [15, 2.8]]);
-    for (const s of v.saplings) close(s.z, zb + 1.5);
+    expect(v.saplings.map((s) => [s.x, s.height])).toEqual([[-3, 2.5], [1.5, 2.2], [6, 3.0], [10.5, 2.4], [15, 2.8]]);
+    for (const s of v.saplings) close(s.z, zb + 1.2);
+    expect(v.wallRow.map((w) => w.x)).toEqual([-0.8, 3.8, 8.3, 12.8, 17.2]);
+    for (const w of v.wallRow) { close(w.z, zb + 0.8); expect([w.height, w.radius]).toEqual([3.2, 0.25]); }
+    expect(v.tallSaplings).toEqual([{ x: 5, z: -31, height: 6, radius: 1.2 }, { x: -8, z: -25, height: 5.5, radius: 1.2 }]);
     expect(v.poplars).toHaveLength(22);
     close(v.poplars[0].z, -14);
     close(v.poplars[21].z, zb + 1);
     expect(v.poplars.every((p) => Math.abs(p.x - (-19 + 1.2)) < 1e-9)).toBe(true);
-    expect(v.poplars.slice(0, 4).map((p) => p.height)).toEqual([5, 5.5, 6, 5]);
+    expect(v.poplars.slice(0, 4).map((p) => p.height)).toEqual([4.5, 4.9, 5.3, 4.5]);
     expect(v.phormiums).toHaveLength(8);
     close(v.phormiums[0].z, -16);
     close(v.phormiums[7].z, zb + 3);
     expect(v.phormiums.every((p) => Math.abs(p.x - (-19 + 2.2)) < 1e-9)).toBe(true);
-    expect(v.willows).toEqual([{ x: -8, z: -29, height: 6 }, { x: 7, z: -36, height: 6 }, { x: -5, z: -39, height: 6 }, { x: 9, z: -28, height: 6 }]);
-    expect(v.conifer).toEqual({ x: 4, z: -40.5, height: 7 });
+    expect(v.willows).toEqual([{ x: -15.3, z: -32.8, height: 3.2 }, { x: -14.5, z: -39.5, height: 3.2 }, { x: -16, z: -36.2, height: 3.2 }, { x: -2.5, z: -38, height: 3.2 }]);
+    expect(v.conifer).toEqual({ x: 15, z: 0, height: 6 });
     expect(v.photinia).toEqual({ x: 16.5, z: -16, height: 4.5 });
-    expect(v.background).toEqual({ seed: 21, count: 18, minHeight: 12, maxHeight: 15 });
+    expect(v.background).toEqual({ seed: 21, count: 18, minHeight: 6, maxHeight: 10 });
   });
   it("la vegetación respeta lote, edificio y arena", () => {
-    const { lot, firePit: fp, vegetation: v } = L0;
+    const { lot, vegetation: v } = L0;
     const trees = [...v.saplings, ...v.poplars, ...v.phormiums, ...v.willows, v.conifer, v.photinia];
     for (const t of trees) {
       expect(Math.abs(t.x), `x ${t.x}`).toBeLessThan(lot.halfWidth);
@@ -176,7 +178,6 @@ describe("layout de Barbato's con medidas reales", () => {
       expect(t.z).toBeLessThan(lot.zFront);
       const inBuilding = t.x >= -15 && t.x <= 9.5 && t.z >= -10.35 && t.z <= 5.06;
       expect(inBuilding, `edificio ${t.x},${t.z}`).toBe(false);
-      expect(Math.hypot(t.x - fp.x, t.z - fp.z), `arena ${t.x},${t.z}`).toBeGreaterThan(fp.sandRadius + 1);
     }
   });
   it("la luz del frente cuelga entre los apliques de la puerta", () => {

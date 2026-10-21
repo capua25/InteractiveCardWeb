@@ -118,7 +118,7 @@ export function createViewer(
         if ((o as THREE.Light).isLight) (o as THREE.Light).dispose();
       });
 
-    const { root, roofGroup, curtains } = tourScene.build({ materials, textures, primitives: createPrimitives(materials) });
+    const { root, roofGroup, curtains } = tourScene.build({ materials, textures, primitives: createPrimitives(materials), detail: quality.detail });
     mergeByMaterial(root, roofGroup);
     mergeByMaterial(roofGroup);
     root.traverse((o) => {
@@ -139,6 +139,7 @@ export function createViewer(
     const render = () => {
       renderer.render(scene, camera);
       canvas.dataset.drawCalls = String(renderer.info.render.calls);
+      canvas.dataset.triangles = String(renderer.info.render.triangles);
     };
     const clampAndRender = () => {
       clampPan(controls.target, camera.position, tourScene.targetBounds);

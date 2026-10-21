@@ -71,6 +71,8 @@ export type BarbatosLayout = {
   };
   vegetation: {
     saplings: { x: number; z: number; height: number }[];
+    wallRow: { x: number; z: number; height: number; radius: number }[];
+    tallSaplings: { x: number; z: number; height: number; radius: number }[];
     poplars: { x: number; z: number; height: number }[];
     phormiums: { x: number; z: number }[];
     willows: { x: number; z: number; height: number }[];
@@ -303,17 +305,17 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     frontSegments: plinthSegments(-halfWidth, halfWidth, [{ x: entranceX, width: lt.entrance.width }]),
   };
 
-  // Fogón centrado en x, a fromGallery del borde del techo de la galería.
+  // Fogón en `x` (junción galería/anexo), a `fromBackWall` del muro del fondo del lote.
   const fp = d.firePit;
-  const firePitZ = gallery.zRoofOuter - fp.fromGallery;
+  const firePitZ = zBack + fp.fromBackWall;
   const firePit = {
-    x: 0,
+    x: fp.x,
     z: firePitZ,
     ringRadius: fp.ringDiameter / 2,
     ringHeight: fp.ringHeight,
     basketRadius: fp.basketDiameter / 2,
     sandRadius: fp.sandRadius,
-    sandVertices: hexagonVertices(0, firePitZ, fp.sandRadius),
+    sandVertices: hexagonVertices(fp.x, firePitZ, fp.sandRadius),
   };
 
   // Vegetación: plantines contra el muro del fondo, álamos y formios contra el muro izquierdo.
@@ -321,6 +323,8 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   const along = (i: number, n: number, z0: number, z1: number) => z0 + ((z1 - z0) * i) / (n - 1);
   const vegetation = {
     saplings: vg.saplings.xs.map((x, i) => ({ x, z: zBack + vg.saplings.fromBackWall, height: vg.saplings.heights[i] })),
+    wallRow: vg.wallRow.xs.map((x) => ({ x, z: zBack + vg.wallRow.fromBackWall, height: vg.wallRow.height, radius: vg.wallRow.radius })),
+    tallSaplings: vg.tallSaplings.map((t) => ({ ...t, radius: vg.tallCrownRadius })),
     poplars: Array.from({ length: vg.poplars.count }, (_, i) => ({
       x: -halfWidth + vg.poplars.fromSideWall,
       z: along(i, vg.poplars.count, vg.poplars.zStart, zBack + vg.poplars.endFromBackWall),

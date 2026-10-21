@@ -1,16 +1,31 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { rng } from "@/tour/engine/textures";
-import type { SceneElement } from "@/tour/types";
+import type { GeometryDetail, SceneElement } from "@/tour/types";
 import type { BarbatosLayout } from "../layout";
 
 const CROWN_RADIUS_RATIO = 0.25; // radio de la copa de fondo respecto de su altura
-const POPLAR = { radius: 0.9, lift: 0.3, seed: 5, jitter: 0.15 };
+const POPLAR = { radius: 0.7, lift: 0.3, seed: 5, jitter: 0.15 };
 const CONIFER = { radius: 1.8, lift: 1 };
-const SAPLING = { trunkRadius: 0.06, trunkRatio: 0.55, crownRadius: 0.28, crownY: 0.72 };
-const WILLOW = { trunkRadius: 0.18, trunkHeight: 2.2, crown: { rx: 2.4, ry: 1.4, y: 4.3 }, skirt: { y: 0.9, height: 3.3, scale: 1.4 } };
+const SAPLING = { trunkRadius: 0.06, trunkRatio: 0.55, crownRadius: 0.22, crownY: 0.72 };
+const WILLOW = { trunkRadius: 0.18, trunkHeight: 1.2, crown: { rx: 1.2, ry: 0.8, y: 2.3 }, skirt: { y: 0.5, height: 2, scale: 0.7 } };
 const PHOTINIA = { trunkRadius: 0.1, trunkHeight: 1.4, crownRadius: 1.3, crownY: 2.9 };
 const PHORMIUM = { min: 1.4, max: 2.2, seed: 11 };
+
+/** Radio de copa (círculo en planta) de cada árbol dentro del lote, para chequear despejes. */
+export function treeCrowns(l: BarbatosLayout): { x: number; z: number; radius: number }[] {
+  const v = l.vegetation;
+  return [
+    ...v.saplings.map((s) => ({ x: s.x, z: s.z, radius: s.height * SAPLING.crownRadius })),
+    ...v.tallSaplings.map((t) => ({ x: t.x, z: t.z, radius: t.radius })),
+    ...v.wallRow.map((w) => ({ x: w.x, z: w.z, radius: w.radius })),
+    ...v.poplars.map((p) => ({ x: p.x, z: p.z, radius: POPLAR.radius * (1 + POPLAR.jitter) })),
+    ...v.phormiums.map((p) => ({ x: p.x, z: p.z, radius: 0.4 })),
+    ...v.willows.map((w) => ({ x: w.x, z: w.z, radius: WILLOW.skirt.scale * 2.2 })),
+    { x: v.conifer.x, z: v.conifer.z, radius: CONIFER.radius },
+    { x: v.photinia.x, z: v.photinia.z, radius: PHOTINIA.crownRadius },
+  ];
+}
 
 export interface BackgroundTree { x: number; z: number; height: number; radius: number }
 
@@ -55,21 +70,48 @@ class Batch {
   }
 }
 
-const unitCylinder = () => new THREE.CylinderGeometry(1, 1, 1, 6).translate(0, 0.5, 0); // base en y=0
+// Segmentos por nivel de detalle: la geometría es compartida por todas las instancias, así que el detalle
+// cambia triángulos, nunca draw calls.
+const DETAIL = {
+  high: { crown: 2, cone: 12, phormium: 8, skirt: 16, trunk: 8 },
+  low: { crown: 1, cone: 7, phormium: 5, skirt: 8, trunk: 6 },
+} as const;
+const CROWN_NOISE = 0.14;
+
+// Icosaedro unitario de bajo poly con ruido radial determinista: los vértices coincidentes (misma posición)
+// se desplazan igual, así la silueta queda orgánica sin abrir grietas. Se hornea una vez en la geometría compartida.
+export function crownGeometry(detail: GeometryDetail): THREE.BufferGeometry {
+  const geo = new THREE.IcosahedronGeometry(1, DETAIL[detail].crown).toNonIndexed();
+  const pos = geo.getAttribute("position");
+  const v = new THREE.Vector3();
+  for (let i = 0; i < pos.count; i++) {
+    v.fromBufferAttribute(pos, i);
+    const h = Math.sin(v.x * 12.9898 + v.y * 78.233 + v.z * 37.719) * 43758.5453;
+    const n = h - Math.floor(h);
+    v.multiplyScalar(1 + CROWN_NOISE * (n - 0.5));
+    pos.setXYZ(i, v.x, v.y, v.z);
+  }
+  geo.computeVertexNormals();
+  return geo;
+}
+
+const unitCylinder = (segments: number) => new THREE.CylinderGeometry(1, 1, 1, segments).translate(0, 0.5, 0); // base en y=0
 const unitCone = (segments: number, radius = 1) => new THREE.ConeGeometry(radius, 1, segments).translate(0, 0.5, 0);
 
 // Vegetación del parque en pocos draw calls: troncos, copas claras, copas oscuras, faldas de sauce, formios,
 // fotinia (instanciados por tipo) y los árboles de fondo en un único mesh fusionado.
 export const vegetation: SceneElement<BarbatosLayout> = {
   id: "vegetation",
-  build({ layout: l, materials }) {
+  build({ layout: l, materials, detail = "low" }) {
+    const D = DETAIL[detail];
     const v = l.vegetation;
-    const trunks = new Batch(unitCylinder());
-    const lightCrowns = new Batch(new THREE.IcosahedronGeometry(1, 0));
-    const darkCones = new Batch(unitCone(7));
-    const skirts = new Batch(new THREE.CylinderGeometry(1.2, 2.2, 1, 8, 1, true).translate(0, 0.5, 0));
-    const phormiums = new Batch(unitCone(5, 0.4));
-    const photiniaCrown = new Batch(new THREE.IcosahedronGeometry(1, 0));
+    const trunks = new Batch(unitCylinder(D.trunk));
+    const crown = crownGeometry(detail);
+    const lightCrowns = new Batch(crown);
+    const darkCones = new Batch(unitCone(D.cone));
+    const skirts = new Batch(new THREE.CylinderGeometry(1.2, 2.2, 1, D.skirt, 1, true).translate(0, 0.5, 0));
+    const phormiums = new Batch(unitCone(D.phormium, 0.4));
+    const photiniaCrown = new Batch(crown);
 
     for (const s of v.saplings) {
       const trunkH = s.height * SAPLING.trunkRatio;
@@ -77,6 +119,12 @@ export const vegetation: SceneElement<BarbatosLayout> = {
       const r = s.height * SAPLING.crownRadius;
       lightCrowns.add(s.x, s.height * SAPLING.crownY, s.z, [r, r, r]);
     }
+    for (const t of v.tallSaplings) {
+      const r = t.radius;
+      trunks.add(t.x, 0, t.z, [SAPLING.trunkRadius * 1.6, t.height - r, SAPLING.trunkRadius * 1.6]);
+      lightCrowns.add(t.x, t.height - r, t.z, [r, r, r]);
+    }
+    for (const w of v.wallRow) darkCones.add(w.x, POPLAR.lift, w.z, [w.radius, w.height, w.radius]);
     const J = rng(POPLAR.seed);
     for (const p of v.poplars) {
       const w = POPLAR.radius * (1 - POPLAR.jitter + 2 * POPLAR.jitter * J());
@@ -112,7 +160,7 @@ export const vegetation: SceneElement<BarbatosLayout> = {
     );
 
     // Fondo: copas icosaédricas achatadas por árbol, fusionadas sin troncos.
-    const blob = new THREE.IcosahedronGeometry(1, 0).toNonIndexed();
+    const blob = crown;
     const parts = backgroundTrees(l).map((t) => {
       const m = new THREE.Matrix4().compose(
         new THREE.Vector3(t.x, t.height * 0.55, t.z),

@@ -14,6 +14,10 @@ describe("pickQuality", () => {
   it("no sube el pixel ratio por encima del dpr real", () => {
     expect(pickQuality({ coarsePointer: true, width: 400, dpr: 1 }).pixelRatio).toBe(1);
   });
+  it("detalle de geometría: alto en desktop, bajo en mobile", () => {
+    expect(pickQuality({ coarsePointer: false, width: 1440, dpr: 1 }).detail).toBe("high");
+    expect(pickQuality({ coarsePointer: true, width: 400, dpr: 1 }).detail).toBe("low");
+  });
   it("tope de anisotropía 4 y antialias activo", () => {
     expect(pickQuality({ coarsePointer: false, width: 1440, dpr: 1 })).toMatchObject({ maxAnisotropy: 4, antialias: true });
   });

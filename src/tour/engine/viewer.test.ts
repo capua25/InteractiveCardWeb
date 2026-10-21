@@ -9,7 +9,7 @@ const KEYS: TextureKey[] = [
   "plaster", "wallLow", "cement", "grass", "carpet",
 ];
 
-const quality: Quality = { pixelRatio: 1.5, shadowMapSize: 1024, antialias: true, maxAnisotropy: 4 };
+const quality: Quality = { pixelRatio: 1.5, shadowMapSize: 1024, antialias: true, maxAnisotropy: 4, detail: "low" };
 
 function fakeRenderer() {
   return {

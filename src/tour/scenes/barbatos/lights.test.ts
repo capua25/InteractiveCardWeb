@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { BARBATOS_LAYOUT } from "./layout";
 import { createLights } from "./lights";
 
-const lights = createLights(BARBATOS_LAYOUT, { pixelRatio: 1.5, shadowMapSize: 1024, antialias: true, maxAnisotropy: 4 });
+const lights = createLights(BARBATOS_LAYOUT, { pixelRatio: 1.5, shadowMapSize: 1024, antialias: true, maxAnisotropy: 4, detail: "low" });
 
 describe("createLights", () => {
   it("hemisférica cálida del v6", () => {
