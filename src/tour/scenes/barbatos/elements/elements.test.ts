@@ -312,7 +312,7 @@ describe("ELEMENTS de Barbato's", () => {
       return out;
     };
     it("fire-pit: aro de piedra de ⌀2.4 y arena hexagonal sin sombra", () => {
-      const ring = pit().filter((m) => m.material === ctx.materials("stone"));
+      const ring = pit().filter((m) => m.material === ctx.materials("gabion"));
       expect(ring).toHaveLength(1);
       ring[0].geometry.computeBoundingBox();
       expect(ring[0].geometry.boundingBox!.getSize(new THREE.Vector3()).x).toBeCloseTo(2.4, 2);
@@ -486,7 +486,7 @@ describe("ELEMENTS de Barbato's", () => {
 
     it("el fondo tiene ventana horizontal de madera y dos apliques", () => {
       const all = meshes("annex");
-      expect(all.some((m) => m.material === ctx.materials("wood"))).toBe(true);
+      expect(all.some((m) => m.material === ctx.materials("woodDark"))).toBe(true);
       const emitters = all.filter((m) => m.material === ctx.materials("sconce"));
       expect(emitters).toHaveLength(2);
       for (const s of a.rearSconces) expect(emitters.some((m) => Math.abs(m.position.x - s.x) < 1e-6 && m.position.z < a.zBack)).toBe(true);

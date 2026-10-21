@@ -62,7 +62,7 @@ export function makeTextures(maxAnisotropy: number): Textures {
       while (x < s) {
         const rw = 28 + R() * 34;
         g.fillStyle = `hsl(${205 + R() * 15},${8 + R() * 4}%,${62 + R() * 16}%)`;
-        if (R() < 0.08) g.fillStyle = "#c8906a";
+        if (R() < 0.08) g.fillStyle = "#9c9a94"; // piedra más clara, sin tinte cálido (bajo el sol dorado viraba a ladrillo)
         g.beginPath();
         g.roundRect(x + 2, y + 2, rw - 4, rh - 4, 6 + R() * 6);
         g.fill();

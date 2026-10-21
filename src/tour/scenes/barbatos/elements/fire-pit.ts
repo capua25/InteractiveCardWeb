@@ -21,7 +21,7 @@ export const firePit: SceneElement<BarbatosLayout> = {
     sand.userData.noShadow = true;
     g.add(sand);
 
-    g.add(P.cyl(ringRadius, ringHeight, "stone", [x, ringHeight / 2, z], 20));
+    g.add(P.cyl(ringRadius, ringHeight, "gabion", [x, ringHeight / 2, z], 20));
 
     const hearthY = ringHeight + 0.005;
     const hearth = new THREE.Mesh(new THREE.CircleGeometry(HEARTH_RADIUS, 20), materials("hearth"));

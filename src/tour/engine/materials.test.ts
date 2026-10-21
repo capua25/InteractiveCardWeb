@@ -50,11 +50,16 @@ describe("materials", () => {
     });
   });
 
+  it("las copas no usan flatShading (normales suaves de la geometría)", () => {
+    expect(M("crownLight").flatShading).toBe(false);
+    expect(M("photinia").flatShading).toBe(false);
+  });
+
   it("los materiales nuevos tienen los colores de las fotos", () => {
     const hex: Record<string, string> = {
-      crownLight: "7f9a45", crownDark: "4f7a38", sand: "c2ab8d",
-      greyStucco: "82837b", frameGray: "8a8f86", frostedGlass: "4d5a58",
-      photinia: "8a2a22",
+      crownLight: "7f9a45", crownDark: "4f7a38", sand: "b5c0d2",
+      greyStucco: "76a0c4", frameGray: "8a8f86", frostedGlass: "9db3ae",
+      photinia: "8a2a22", woodDark: "2a2c34",
     };
     for (const [k, v] of Object.entries(hex)) {
       expect(M(k as never).color.getHexString(), k).toBe(v);

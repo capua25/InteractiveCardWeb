@@ -22,7 +22,7 @@ export const annex: SceneElement<BarbatosLayout> = {
     g.add(P.box(a.width, a.height, PLATE, "greyStucco", [a.x, a.height / 2, a.zBack - PLATE / 2]));
     g.add(P.box(a.width, a.rearPlinth, 0.04, "stone", [a.x, a.rearPlinth / 2, a.zBack - 0.02]));
     const rw = a.rearWindow;
-    g.add(P.frame("z", rw.x, a.zBack - PLATE, rw.sill, rw.width, rw.height, WALL, { cols: 1, rows: 1, frameKey: "wood", glassKey: "hearth" }));
+    g.add(P.frame("z", rw.x, a.zBack - PLATE, rw.sill, rw.width, rw.height, WALL, { cols: 1, rows: 1, frameKey: "woodDark", glassKey: "hearth" }));
     for (const s of a.rearSconces) g.add(sconce(P, [s.x, s.y, a.zBack - PLATE], "-z"));
     return g;
   },
