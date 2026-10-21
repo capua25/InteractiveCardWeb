@@ -24,6 +24,19 @@ export type Card = {
 export type UvRect = readonly [number, number, number, number];
 const FULL: UvRect = [0, 0, 1, 1];
 
+const CORNERS = [[-0.5, -0.5, 0, 0], [0.5, -0.5, 1, 0], [0.5, 0.5, 1, 1], [-0.5, 0.5, 0, 1]] as const;
+
+/** Las 4 esquinas de una tarjeta (en el orden de sus uv: abajo-izq, abajo-der, arriba-der, arriba-izq) y su normal. */
+export function cardCorners(c: Card): { corners: THREE.Vector3[]; normal: THREE.Vector3 } {
+  const n = c.normal.clone().normalize();
+  const up = c.up.clone().addScaledVector(n, -c.up.dot(n));
+  if (up.lengthSq() < 1e-6) up.set(1, 0, 0).addScaledVector(n, -n.x); // tarjeta horizontal: cualquier eje sirve
+  up.normalize();
+  const right = new THREE.Vector3().crossVectors(up, n).normalize();
+  const corners = CORNERS.map(([sx, sy]) => c.center.clone().addScaledVector(right, sx * c.width).addScaledVector(up, sy * c.height));
+  return { corners, normal: n };
+}
+
 export class CardBuilder {
   private readonly pos: number[] = [];
   private readonly nor: number[] = [];
@@ -35,16 +48,11 @@ export class CardBuilder {
   }
 
   add(c: Card): this {
-    const n = c.normal.clone().normalize();
-    const up = c.up.clone().addScaledVector(n, -c.up.dot(n));
-    if (up.lengthSq() < 1e-6) up.set(1, 0, 0).addScaledVector(n, -n.x); // tarjeta horizontal: cualquier eje sirve
-    up.normalize();
-    const right = new THREE.Vector3().crossVectors(up, n).normalize();
+    const { corners, normal: n } = cardCorners(c);
     const base = this.pos.length / 3;
-    const v = new THREE.Vector3();
     const radial = new THREE.Vector3();
-    for (const [sx, sy, u, w] of [[-0.5, -0.5, 0, 0], [0.5, -0.5, 1, 0], [0.5, 0.5, 1, 1], [-0.5, 0.5, 0, 1]]) {
-      v.copy(c.center).addScaledVector(right, sx * c.width).addScaledVector(up, sy * c.height);
+    for (const [k, [, , u, w]] of CORNERS.entries()) {
+      const v = corners[k];
       this.pos.push(v.x, v.y, v.z);
       radial.subVectors(v, c.bendFrom);
       if (radial.lengthSq() < 1e-8) radial.copy(n);
@@ -124,17 +132,19 @@ export type Column = {
   base: THREE.Vector3; // pie del árbol (x, 0, z)
   from: number; // altura donde empieza el follaje
   to: number; // altura de la punta
-  radius: number; // radio de la columna a media altura (en x)
-  radiusZ?: number; // radio en z si la columna es ovalada (álamos estirados a lo largo del muro); por defecto `radius`
+  radius: number; // semieje en x de la huella: ninguna esquina de tarjeta sale de la elipse (radius, radiusZ)
+  radiusZ?: number; // semieje en z si la columna es ovalada (álamos estirados a lo largo del muro); por defecto `radius`
   count: number;
   size: number;
   aspect?: number;
 };
 
 /** Copa columnar (álamo): tarjetas apiladas en espiral de `from` a `to`, verticales y mirando hacia afuera, con la
- * columna afinándose arriba. El follaje cubre exactamente ese tramo (sin tarjetas sueltas en la punta). */
+ * columna afinándose arriba. El follaje cubre exactamente ese tramo (sin tarjetas sueltas en la punta) y su huella en
+ * planta es exactamente la elipse (radius, radiusZ): las tarjetas que se pasarían se acercan al tronco. */
 export function addColumn(b: CardBuilder, c: Column, R: () => number): void {
   const aspect = c.aspect ?? 1.3;
+  const rx = c.radius, rz = c.radiusZ ?? c.radius;
   const golden = Math.PI * (3 - Math.sqrt(5));
   const phase = R() * Math.PI * 2;
   for (let k = 0; k < c.count; k++) {
@@ -144,12 +154,22 @@ export function addColumn(b: CardBuilder, c: Column, R: () => number): void {
     const y = c.from + height / 2 + t * (c.to - c.from - height);
     const a = phase + k * golden + (R() - 0.5) * 0.4;
     const out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
-    // centros entre 0.15 y 0.6 del radio: la columna se ve llena (no un anillo hueco) y el borde no pasa de
-    // 0.6·radio + media tarjeta
-    const reach = (0.15 + 0.45 * Math.sqrt(R())) * Math.sin(Math.PI * (0.25 + 0.75 * t)) ** 0.5;
-    const center = new THREE.Vector3(c.base.x + out.x * reach * c.radius, y, c.base.z + out.z * reach * (c.radiusZ ?? c.radius));
+    // centros hacia afuera (sesgo √): la columna se ve llena hasta el borde, no un anillo hueco
+    let reach = (0.15 + 0.45 * Math.sqrt(R())) * Math.sin(Math.PI * (0.25 + 0.75 * t)) ** 0.5;
     const up = UP.clone().applyAxisAngle(out, (R() - 0.5) * 0.8);
-    b.add({ center, normal: out.clone().setY(0.15), up, width, height, bendFrom: new THREE.Vector3(c.base.x, y - 0.3, c.base.z), bend: 0.7 });
+    const card = (r: number, scale: number): Card => ({
+      center: new THREE.Vector3(c.base.x + out.x * r * rx, y, c.base.z + out.z * r * rz),
+      normal: out.clone().setY(0.15), up, width: width * scale, height: height * scale,
+      bendFrom: new THREE.Vector3(c.base.x, y - 0.3, c.base.z), bend: 0.7,
+    });
+    const inside = (cc: Card) => cardCorners(cc).corners.every((p) => ((p.x - c.base.x) / rx) ** 2 + ((p.z - c.base.z) / rz) ** 2 <= 1 + 1e-9);
+    // si alguna esquina sale de la huella: primero se acerca al tronco y, si ni pegada al tronco entra, se achica
+    let scale = 1;
+    while (!inside(card(reach, scale))) {
+      if (reach > 1e-3) reach = Math.max(0, reach - 0.05);
+      else scale *= 0.9;
+    }
+    b.add(card(reach, scale));
   }
 }
 

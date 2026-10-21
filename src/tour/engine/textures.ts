@@ -177,3 +177,33 @@ export function makeTextures(maxAnisotropy: number, detail: GeometryDetail = "hi
     ...makeFoliageTextures(detail, maxAnisotropy),
   };
 }
+
+// Texturas compartidas entre montajes, por nivel de detalle y anisotropía: reabrir el recorrido (o el doble montaje
+// de StrictMode en dev) no vuelve a dibujar ~15 canvas. Los objetos (y sus píxeles en memoria) quedan en el cache;
+// cuando el último visor que las usa las suelta se libera su copia en la GPU de ese renderer (que se está yendo). Un
+// renderer nuevo las vuelve a subir solo, porque three re-sube una textura liberada al usarla de nuevo.
+const shared = new Map<string, { textures: Textures; users: number }>();
+
+export function acquireTextures(maxAnisotropy: number, detail: GeometryDetail = "high"): Textures {
+  const key = `${detail}|${maxAnisotropy}`;
+  let entry = shared.get(key);
+  if (!entry) {
+    entry = { textures: makeTextures(maxAnisotropy, detail), users: 0 };
+    shared.set(key, entry);
+  }
+  entry.users++;
+  return entry.textures;
+}
+
+/** Suelta texturas de `acquireTextures` (libera la GPU al quedar sin usuarios); las que no vienen del cache se liberan ya. */
+export function releaseTextures(textures: Textures): void {
+  const entry = [...shared.values()].find((e) => e.textures === textures);
+  if (entry && --entry.users > 0) return;
+  if (entry) entry.users = 0;
+  for (const t of new Set(Object.values(textures))) t.dispose();
+}
+
+/** Solo para tests: vacía el cache compartido. */
+export function clearSharedTextures(): void {
+  shared.clear();
+}

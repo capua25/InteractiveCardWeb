@@ -346,9 +346,6 @@ describe("ELEMENTS de Barbato's", () => {
         expect(Math.min(...ys)).toBeLessThan(0.9);
         expect(Math.max(...ys)).toBeGreaterThan(2.3);
         expect(Math.max(...ys)).toBeGreaterThan(WILLOW_TOP);
-        // ninguna tarjeta de hojas en el sauce (los álamos vecinos quedan a más de 1.5 m del centro)
-        const leaves = worldVertices(byMaterial(veg(), "leaves")[0]).filter((p) => Math.hypot(p.x - w.x, p.z - w.z) < 1.2);
-        expect(leaves).toHaveLength(0);
       }
     });
     it("cada árbol del layout conserva su posición: el tronco arranca en (x, 0, z)", () => {
@@ -410,23 +407,47 @@ describe("ELEMENTS de Barbato's", () => {
         }
       }
     });
-    it.each(["high", "low"] as const)("álamos (%s): columnas anchas que se tocan con las vecinas, una cortina continua", (detail) => {
-      const leaves = worldVertices(byMaterial(veg(detail), "leaves")[0]);
+    it.each(["high", "low"] as const)("álamos (%s): cortina continua a lo largo del muro, sin huecos de más de 0.3 m entre 1 y 3 m de alto", (detail) => {
+      const vs = worldVertices(byMaterial(veg(detail), "leaves")[0]);
       const ps = v.poplars;
-      // follaje de cada álamo: alcance hacia el pasto en su propio tramo (±0.65 m en z, sin las vecinas) y extensión
-      // en z a media altura (1–3 m)
-      const extent = ps.map((p) => {
-        const strip = leaves.filter((q) => Math.abs(q.x - p.x) < 1.3 && Math.abs(q.z - p.z) < 0.65);
-        const mid = leaves.filter((q) => Math.abs(q.x - p.x) < 1.3 && Math.abs(q.z - p.z) < 1.9 && q.y > 1 && q.y < 3);
-        return { minZ: Math.min(...mid.map((q) => q.z)), maxZ: Math.max(...mid.map((q) => q.z)), maxX: Math.max(...strip.map((q) => q.x)) };
-      });
-      ps.forEach((p, i) => {
-        // hacia el pasto el follaje llega a ≥ 0.75 m del tronco en todo el tramo; hacia el muro no hay más
-        // lugar (1.1 m hasta la cara del muro)
-        expect(extent[i].maxX - p.x, `${p.z}`).toBeGreaterThan(0.75);
-        // el siguiente álamo (z decreciente) arranca antes de que termine este: sin hueco entre columnas
-        if (i < ps.length - 1) expect(extent[i + 1].maxZ, `${p.z}`).toBeGreaterThan(extent[i].minZ);
-      });
+      // tarjetas de la franja de los álamos (todas sus esquinas a menos de 1.5 m del muro) con el centro entre 1 y 3 m:
+      // cada una cubre en z el intervalo de sus esquinas
+      const band = -BARBATOS_LAYOUT.lot.halfWidth + 1.5;
+      const spans: [number, number][] = [];
+      for (let c = 0; c < vs.length / 4; c++) {
+        const q = vs.slice(c * 4, c * 4 + 4);
+        const y = q.reduce((t, p) => t + p.y, 0) / 4;
+        if (q.every((p) => p.x < band) && y > 1 && y < 3) spans.push([Math.min(...q.map((p) => p.z)), Math.max(...q.map((p) => p.z))]);
+      }
+      spans.sort((x, y) => x[0] - y[0]);
+      const from = ps[ps.length - 1].z, to = ps[0].z;
+      let covered = from, worst = 0;
+      for (const [z0, z1] of spans) {
+        if (z1 < from || z0 > to) continue;
+        worst = Math.max(worst, z0 - covered);
+        covered = Math.max(covered, z1);
+      }
+      worst = Math.max(worst, to - covered);
+      expect(worst).toBeLessThanOrEqual(0.3);
+    });
+    it.each(["high", "low"] as const)("álamos (%s): el follaje llega a ≥ 0.75 m hacia el pasto y nunca sale de su huella elíptica", (detail) => {
+      const vs = worldVertices(byMaterial(veg(detail), "leaves")[0]).filter((p) => p.x < -BARBATOS_LAYOUT.lot.halfWidth + 2.5);
+      const crowns = treeCrowns(BARBATOS_LAYOUT).filter((c) => c.kind === "poplar");
+      // todo vértice de hojas junto al muro −x pertenece a la elipse de algún álamo (son las únicas hojas ahí)
+      for (const p of vs) expect(crowns.some((c) => ((p.x - c.x) / c.rx) ** 2 + ((p.z - c.z) / c.rz) ** 2 <= 1 + 1e-6), `${p.x},${p.z}`).toBe(true);
+      for (const c of crowns) {
+        const mine = vs.filter((p) => Math.abs(p.z - c.z) < 0.65);
+        expect(Math.max(...mine.map((p) => p.x)) - c.x, `${c.z}`).toBeGreaterThan(0.75);
+      }
+    });
+    it("fila del fondo: el follaje nunca sale de su huella", () => {
+      const crowns = treeCrowns(BARBATOS_LAYOUT).filter((c) => c.kind === "wallRow");
+      const vs = worldVertices(byMaterial(veg("high"), "leaves")[0]);
+      for (const c of crowns) {
+        const mine = vs.filter((p) => Math.hypot(p.x - c.x, p.z - c.z) < c.radius + 0.5);
+        expect(mine.length).toBeGreaterThan(0);
+        for (const p of mine) expect(Math.hypot(p.x - c.x, p.z - c.z)).toBeLessThanOrEqual(c.radius + 1e-6);
+      }
     });
     it("park ya no planta árboles", () => {
       const parkObj = ELEMENTS.find((e) => e.id === "park")!.build(ctx);

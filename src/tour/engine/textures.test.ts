@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ALPHA_CUT, bleed, coverageMips, FOLIAGE_TEXTURE_SIZE, type MipLevel } from "./foliage-textures";
-import { canvasTex, makeTextures, rng } from "./textures";
+import { acquireTextures, canvasTex, clearSharedTextures, makeTextures, releaseTextures, rng } from "./textures";
 
 const REPEAT = ["carpet", "ceiling", "cement", "grass", "gravel", "plaster", "roof", "stone", "wallLow", "wood"] as const;
 const FOLIAGE = ["flax", "lavender", "leaves", "photiniaLeaves", "willow"] as const;
@@ -115,5 +115,39 @@ describe("textures", () => {
     const cov = (d: Uint8Array) => Array.from(d).filter((_, i) => i % 4 === 3).filter((a) => a >= ALPHA_CUT).length / (d.length / 4);
     expect(coverageMips(base, size).every((m) => cov(m.data) === 1)).toBe(true);
     expect(coverageMips(half, size).slice(0, 5).map((m) => cov(m.data))).toEqual([0.5, 0.5, 0.5, 0.5, 0.5]);
+  });
+
+  describe("cache compartido entre montajes", () => {
+    beforeEach(() => clearSharedTextures());
+
+    it("reabrir el recorrido (o el doble montaje de StrictMode) no vuelve a dibujar las texturas", () => {
+      const create = vi.spyOn(document, "createElement");
+      const a = acquireTextures(4, "low");
+      const drawn = create.mock.calls.length;
+      releaseTextures(a);
+      const b = acquireTextures(4, "low");
+      expect(b).toBe(a);
+      expect(create.mock.calls.length).toBe(drawn);
+      // otro nivel de detalle es otro juego (512 vs 256 px)
+      expect(acquireTextures(4, "high")).not.toBe(a);
+    });
+
+    it("la GPU se libera recién cuando el último visor las suelta, y se pueden volver a usar", () => {
+      const a = acquireTextures(2, "low");
+      const dispose = vi.spyOn(a.leaves, "dispose");
+      acquireTextures(2, "low"); // segundo visor montado a la vez
+      releaseTextures(a);
+      expect(dispose).not.toHaveBeenCalled();
+      releaseTextures(a);
+      expect(dispose).toHaveBeenCalledTimes(1);
+      expect(acquireTextures(2, "low")).toBe(a);
+    });
+
+    it("texturas que no vienen del cache se liberan al soltarlas", () => {
+      const own = makeTextures(1, "low");
+      const dispose = vi.spyOn(own.flax, "dispose");
+      releaseTextures(own);
+      expect(dispose).toHaveBeenCalledTimes(1);
+    });
   });
 });

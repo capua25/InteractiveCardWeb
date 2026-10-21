@@ -52,4 +52,12 @@ describe("cards", () => {
     const width = (q: (typeof qs)[number]) => q.vs[0].distanceTo(q.vs[1]);
     expect(width(qs[qs.length - 1])).toBeLessThan(width(qs[0]));
   });
+
+  it("columna ovalada: ninguna esquina sale de la elipse (radius, radiusZ), aun con tarjetas más grandes que la huella", () => {
+    for (const [size, rx, rz] of [[0.9, 1, 1.3], [1.6, 0.5, 0.7], [0.6, 0.63, 0.63]]) {
+      const b = new CardBuilder();
+      addColumn(b, { base: new THREE.Vector3(2, 0, -3), from: 0.2, to: 5, radius: rx, radiusZ: rz, count: 60, size }, rng(9));
+      for (const q of quads(b.geometry())) for (const v of q.vs) expect(((v.x - 2) / rx) ** 2 + ((v.z + 3) / rz) ** 2).toBeLessThanOrEqual(1 + 1e-6);
+    }
+  });
 });

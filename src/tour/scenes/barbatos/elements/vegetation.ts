@@ -7,24 +7,45 @@ import type { BarbatosLayout } from "../layout";
 
 // álamos contra el muro −x: columnas anchas que se tocan con las vecinas (cortina continua, como en las fotos). El
 // jitter de ancho es chico para que el follaje no pase el muro; el de alto da la silueta despareja.
-const POPLAR = { radius: 0.94, alongWall: 1.3, lift: 0.3, seed: 5, jitter: 0.06, heightJitter: 0.15, foliageFrom: 0.25 };
+const POPLAR = {
+  card: 0.94, // lado base de las tarjetas (con ±`cardJitter` por árbol)
+  footprint: { x: 1.0, alongWall: 1.3, backWallGap: 0.5 }, // huella elíptica real del follaje (semiejes, m)
+  lift: 0.3, seed: 5, cardJitter: 0.06, heightJitter: 0.15, foliageFrom: 0.25,
+};
+// fila del muro del fondo: columnas finas; la huella del follaje es `reach`·radio del layout
+const WALL_ROW = { reach: 1.26, foliageFrom: 0.45, cardRatio: 1.3 };
 const SAPLING = { trunkRadius: 0.06, crownRadius: 0.22 };
 const WILLOW = { trunkRadius: 0.11, trunkHeight: 1.2, crown: { rx: 1.2, ry: 0.8, y: 2.3 }, skirt: { y: 0.5, height: 2, scale: 0.7 } };
 const PHOTINIA = { stems: 5, stemRadius: 0.05, crownRadius: 1.3, tipSpread: 0.55, foliageFrom: 0.4 }; // foliageFrom: fracción del alto
 const PHORMIUM = { min: 1.4, max: 2.2, seed: 11, width: 0.8, variegated: [0] as readonly number[] }; // índices variegados (verde/amarillo)
 const SEED = 23;
 
-/** Radio de copa (círculo en planta) de cada árbol dentro del lote, para chequear despejes. */
-export function treeCrowns(l: BarbatosLayout): { x: number; z: number; radius: number }[] {
+/** Huella en planta de una copa: elipse de semiejes `rx`, `rz`; `radius` es el círculo conservador (el mayor). */
+export type Crown = { x: number; z: number; rx: number; rz: number; radius: number; kind: "poplar" | "wallRow" | "other" };
+const circle = (x: number, z: number, r: number): Crown => ({ x, z, rx: r, rz: r, radius: r, kind: "other" });
+
+/** Huella elíptica de un álamo: hasta 1.3 m a lo largo del muro (menos el último, que no se mete en el muro del
+ * fondo) y 1 m de ancho. `addColumn` garantiza que ninguna tarjeta sale de ella. */
+export function poplarFootprint(l: BarbatosLayout, z: number): { rx: number; rz: number } {
+  const f = POPLAR.footprint;
+  return { rx: f.x, rz: Math.min(f.alongWall, z - l.lot.zBack - f.backWallGap) };
+}
+
+/** Huella de cada copa dentro del lote, para chequear despejes. Álamos y fila del fondo son exactas (su geometría
+ * nunca sale de la elipse); el resto son radios de diseño. */
+export function treeCrowns(l: BarbatosLayout): Crown[] {
   const v = l.vegetation;
   return [
-    ...v.saplings.map((s) => ({ x: s.x, z: s.z, radius: s.height * SAPLING.crownRadius })),
-    ...v.tallSaplings.map((t) => ({ x: t.x, z: t.z, radius: t.radius })),
-    ...v.wallRow.map((w) => ({ x: w.x, z: w.z, radius: w.radius })),
-    ...v.poplars.map((p) => ({ x: p.x, z: p.z, radius: POPLAR.radius * (1 + POPLAR.jitter) })),
-    ...v.phormiums.map((p) => ({ x: p.x, z: p.z, radius: PHORMIUM.width / 2 })),
-    ...v.willows.map((w) => ({ x: w.x, z: w.z, radius: WILLOW.skirt.scale * 2.2 })),
-    { x: v.photinia.x, z: v.photinia.z, radius: PHOTINIA.crownRadius },
+    ...v.saplings.map((s) => circle(s.x, s.z, s.height * SAPLING.crownRadius)),
+    ...v.tallSaplings.map((t) => circle(t.x, t.z, t.radius)),
+    ...v.wallRow.map((w): Crown => ({ ...circle(w.x, w.z, w.radius * WALL_ROW.reach), kind: "wallRow" })),
+    ...v.poplars.map((p): Crown => {
+      const { rx, rz } = poplarFootprint(l, p.z);
+      return { x: p.x, z: p.z, rx, rz, radius: Math.max(rx, rz), kind: "poplar" };
+    }),
+    ...v.phormiums.map((p) => circle(p.x, p.z, PHORMIUM.width / 2)),
+    ...v.willows.map((w) => circle(w.x, w.z, WILLOW.skirt.scale * 2.2)),
+    circle(v.photinia.x, v.photinia.z, PHOTINIA.crownRadius),
   ];
 }
 
@@ -117,19 +138,18 @@ export const vegetation: SceneElement<BarbatosLayout> = {
     for (const w of v.wallRow) {
       const top = POPLAR.lift + w.height;
       trunks.push(limb(V(w.x, 0, w.z), V(w.x, top * 0.8, w.z), 0.035, 0.012, C.trunk));
-      addColumn(leaves, { base: V(w.x, 0, w.z), from: POPLAR.foliageFrom + 0.2, to: top, radius: w.radius, count: C.wallRow, size: w.radius * 1.3 }, R);
+      addColumn(leaves, { base: V(w.x, 0, w.z), from: WALL_ROW.foliageFrom, to: top, radius: w.radius * WALL_ROW.reach, count: C.wallRow, size: w.radius * WALL_ROW.cardRatio }, R);
     }
     const J = rng(POPLAR.seed);
     for (const p of v.poplars) {
-      const w = POPLAR.radius * (1 - POPLAR.jitter + 2 * POPLAR.jitter * J());
+      const card = POPLAR.card * (1 - POPLAR.cardJitter + 2 * POPLAR.cardJitter * J());
       const h = p.height * (1 - POPLAR.heightJitter + 2 * POPLAR.heightJitter * J());
-      J(); // yaw de la versión anterior: se consume para no correr la secuencia de jitter
       // follaje desde ~0.4 m del pasto hasta la punta (columna), como los álamos de la foto
       const top = POPLAR.lift + h;
       trunks.push(limb(V(p.x, 0, p.z), V(p.x, POPLAR.lift + h * 0.7, p.z), 0.055, 0.02, C.trunk));
       // ovalada a lo largo del muro (z) para tocarse con las vecinas; la última no se mete en el muro del fondo
-      const alongWall = Math.min(POPLAR.alongWall, p.z - l.lot.zBack - 0.5);
-      addColumn(leaves, { base: V(p.x, 0, p.z), from: POPLAR.foliageFrom, to: top, radius: w * 1.12, radiusZ: alongWall, count: C.poplar, size: w * 1.1 * C.scale }, R);
+      const { rx, rz } = poplarFootprint(l, p.z);
+      addColumn(leaves, { base: V(p.x, 0, p.z), from: POPLAR.foliageFrom, to: top, radius: rx, radiusZ: rz, count: C.poplar, size: card * 1.1 * C.scale }, R);
     }
 
     for (const t of v.willows) {

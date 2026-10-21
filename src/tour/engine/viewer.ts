@@ -7,12 +7,13 @@ import { clampTarget, resolveViewPose } from "./camera";
 import { createMaterials } from "./materials";
 import { mergeByMaterial } from "./merge";
 import { createPrimitives } from "./primitives";
-import { makeTextures, type Textures } from "./textures";
+import { acquireTextures, releaseTextures, type Textures } from "./textures";
 
 export type ViewerDeps = {
   createRenderer(quality: Quality): THREE.WebGLRenderer;
   createEnvironment(renderer: THREE.WebGLRenderer): { texture: THREE.Texture; dispose(): void };
   createTextures(maxAnisotropy: number, detail: Quality["detail"]): Textures;
+  releaseTextures(textures: Textures): void;
   frames: FrameScheduler;
 };
 
@@ -31,7 +32,8 @@ const defaultDeps: ViewerDeps = {
       },
     };
   },
-  createTextures: makeTextures,
+  createTextures: acquireTextures,
+  releaseTextures,
   frames: {
     request: (cb) => requestAnimationFrame(cb),
     cancel: (id) => cancelAnimationFrame(id),
@@ -98,7 +100,7 @@ export function createViewer(
     undo.push(() => env.dispose());
     const textures = deps.createTextures(Math.min(quality.maxAnisotropy, renderer.capabilities.getMaxAnisotropy()), quality.detail);
     undo.push(() => {
-      for (const t of Object.values(textures)) t.dispose();
+      deps.releaseTextures(textures);
     });
     const materials = createMaterials(textures, env.texture, tourScene.palette);
 
@@ -111,8 +113,7 @@ export function createViewer(
         mesh.geometry?.dispose();
         if (mesh.material) {
           for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
-            (m as THREE.MeshStandardMaterial).map?.dispose();
-            m.dispose();
+            m.dispose(); // las texturas (map) son compartidas: las suelta releaseTextures
           }
         }
         if ((o as THREE.Light).isLight) (o as THREE.Light).dispose();
@@ -220,7 +221,7 @@ export function createViewer(
         controls.dispose();
         canvas.removeEventListener("webglcontextlost", onContextLost);
         disposeScene();
-        for (const t of Object.values(textures)) t.dispose();
+        deps.releaseTextures(textures);
         env.dispose();
         renderer.dispose();
         renderer.forceContextLoss?.();

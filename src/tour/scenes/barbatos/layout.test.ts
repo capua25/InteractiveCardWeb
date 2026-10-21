@@ -304,13 +304,17 @@ describe("layout de Barbato's con medidas reales", () => {
   });
   it("la vegetación respeta lote, edificio y arena", () => expectParkClear(L0));
   it("los sauces no pisan la columna de álamos", () => {
-    const p0 = L0.vegetation.poplars[0];
-    const poplarR = treeCrowns(L0).find((c) => c.x === p0.x && c.z === p0.z)!.radius;
-    // columnas anchas: ~0.94 m de radio (se tocan con las vecinas, a 1.3 m)
-    expect(poplarR).toBeGreaterThan(0.9);
+    const crowns = treeCrowns(L0);
+    const poplars = crowns.filter((c) => c.kind === "poplar");
+    expect(poplars).toHaveLength(L0.vegetation.poplars.length);
+    // columnas anchas: 1 m hacia el pasto y 1.3 m a lo largo del muro (se tocan con las vecinas, a 1.3 m)
+    expect(poplars[0]).toMatchObject({ rx: 1, rz: 1.3 });
+    // distancia del centro del sauce al borde de cada elipse de álamo ≥ radio del sauce
+    const gapToEllipse = (px: number, pz: number, e: { x: number; z: number; rx: number; rz: number }) =>
+      Math.min(...Array.from({ length: 720 }, (_, k) => (k / 720) * Math.PI * 2).map((a) => Math.hypot(px - e.x - Math.cos(a) * e.rx, pz - e.z - Math.sin(a) * e.rz)));
     for (const w of L0.vegetation.willows) {
-      const willowR = treeCrowns(L0).find((c) => c.x === w.x && c.z === w.z)!.radius;
-      for (const p of L0.vegetation.poplars) expect(Math.hypot(w.x - p.x, w.z - p.z), `sauce ${w.x},${w.z}`).toBeGreaterThanOrEqual(willowR + poplarR);
+      const willowR = crowns.find((c) => c.x === w.x && c.z === w.z)!.radius;
+      for (const p of poplars) expect(gapToEllipse(w.x, w.z, p), `sauce ${w.x},${w.z}`).toBeGreaterThanOrEqual(willowR);
     }
   });
   it("la luz del frente cuelga en el eje de la puerta, entre sus dos apliques", () => {
@@ -346,8 +350,9 @@ function expectParkClear(L: BarbatosLayout) {
   const hex = firePit.sandVertices;
   for (const c of treeCrowns(L)) {
     const tag = `${c.x.toFixed(2)},${c.z.toFixed(2)}`;
-    expect(Math.abs(c.x) + c.radius, `lote x ${tag}`).toBeLessThan(lot.halfWidth);
-    expect(c.z - c.radius, `fondo ${tag}`).toBeGreaterThan(lot.zBack);
+    // dentro de la cara interior de los muros (huella elíptica: semieje x hacia los laterales, z hacia el fondo)
+    expect(Math.abs(c.x) + c.rx, `lote x ${tag}`).toBeLessThan(lot.halfWidth - lot.wallThickness / 2);
+    expect(c.z - c.rz, `fondo ${tag}`).toBeGreaterThan(lot.zBack + lot.wallThickness / 2);
     expect(c.z, `frente ${tag}`).toBeLessThan(lot.zFront);
     const dx = Math.max(r.x0 - c.x, 0, c.x - r.x1);
     const dz = Math.max(r.z0 - c.z, 0, c.z - r.z1);
