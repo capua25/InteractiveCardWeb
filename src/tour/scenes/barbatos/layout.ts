@@ -193,13 +193,17 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     height: fw.height,
     sill: fw.sill,
   }));
-  const rightWin = frontWindows.filter((w) => w.x > frontDoor.x);
-  const doorSconceX = frontDoor.width / 2 + d.frontSconces.doorGap;
+  // Apliques en el punto medio del paño entre aberturas vecinas: a cada lado de la puerta (hasta la ventana más
+  // cercana, o a `doorGap` de la jamba si de ese lado no hay ventana) y entre ventanas derechas consecutivas.
+  const fsc = d.frontSconces;
+  const rightWin = frontWindows.filter((w) => w.x > frontDoor.x).sort((a, b) => a.x - b.x);
+  const leftNear = frontWindows.filter((w) => w.x < frontDoor.x).sort((a, b) => b.x - a.x)[0];
+  const jambL = frontDoor.x - frontDoor.width / 2, jambR = frontDoor.x + frontDoor.width / 2;
+  const between = (a: Opening, b: Opening) => (a.x + a.width / 2 + b.x - b.width / 2) / 2;
   const frontSconces = [
-    { x: frontDoor.x - doorSconceX, y: d.frontSconces.doorHeight },
-    { x: frontDoor.x + doorSconceX, y: d.frontSconces.doorHeight },
-    // en el punto medio entre ventanas derechas consecutivas
-    ...rightWin.slice(1).map((w, i) => ({ x: (rightWin[i].x + w.x) / 2, y: d.frontSconces.windowHeight })),
+    { x: leftNear ? (leftNear.x + leftNear.width / 2 + jambL) / 2 : jambL - fsc.doorGap, y: fsc.height },
+    { x: rightWin[0] ? (jambR + rightWin[0].x - rightWin[0].width / 2) / 2 : jambR + fsc.doorGap, y: fsc.height },
+    ...rightWin.slice(1).map((w, i) => ({ x: between(rightWin[i], w), y: fsc.height })),
   ];
 
   // Fondo (-z): tramo a cornerInset de cada esquina del fondo, dividido en `count` ventanales con pilares.
@@ -458,8 +462,8 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
 
   const pl = d.pointLights;
   const pointLights: Vec3[] = [
-    // la luz del frente cuelga entre los dos apliques de la puerta (eje de la puerta)
-    [(frontSconces[0].x + frontSconces[1].x) / 2, pl.frontY, hz + pl.frontAhead],
+    // la luz del frente cuelga en el eje de la puerta (entre sus dos apliques)
+    [frontDoor.x, pl.frontY, hz + pl.frontAhead],
     ...pl.side.map((s): Vec3 => [s.x, s.y, 0]),
     [hx - T - pl.hearthAhead, pl.hearthY, 0],
     [0, pl.backY, -hz - pl.backBehind],

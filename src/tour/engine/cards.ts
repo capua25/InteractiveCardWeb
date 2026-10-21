@@ -7,7 +7,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const UP = new THREE.Vector3(0, 1, 0);
 const POLE = 0.8; // |y| máximo de la dirección de una tarjeta sobre el elipsoide
-const MIN_TILT = 1.2; // |horizontal| / |vertical| mínimo de la normal de una tarjeta de copa (≈ 40° desde la vertical)
+const MIN_TILT = 1.2; // |horizontal| / |vertical| mínimo de la normal de una tarjeta de copa: normal a ≥ 50° de la vertical
 
 export type Card = {
   center: THREE.Vector3;
@@ -69,7 +69,7 @@ export class CardBuilder {
 }
 
 /** Puntos casi uniformes sobre la esfera unitaria (espiral de Fibonacci) con jitter determinista. */
-export function shellDirections(count: number, R: () => number, jitter = 0.35): THREE.Vector3[] {
+function shellDirections(count: number, R: () => number, jitter = 0.35): THREE.Vector3[] {
   const out: THREE.Vector3[] = [];
   const golden = Math.PI * (3 - Math.sqrt(5));
   const phase = R() * Math.PI * 2;

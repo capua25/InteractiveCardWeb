@@ -131,8 +131,8 @@ describe("layout de Barbato's con medidas reales", () => {
     [-7.6, 1.65, 4.6, 7.55].forEach((x, i) => close(xs[i], x));
     close(9 - (xs[3] + 0.8), 0.65);
     expect(L0.frontSconces).toEqual([
-      { x: expect.closeTo(-5.57, 4), y: 2.4 },
-      { x: expect.closeTo(-0.43, 4), y: 2.4 },
+      { x: expect.closeTo(-5.55, 4), y: 2.4 },
+      { x: expect.closeTo(-0.425, 4), y: 2.4 },
       { x: expect.closeTo(3.125, 4), y: 2.4 },
       { x: expect.closeTo(6.075, 4), y: 2.4 },
     ]);
@@ -145,10 +145,10 @@ describe("layout de Barbato's con medidas reales", () => {
     });
     const xs = L0.frontSconces.map((s) => s.x).sort((a, b) => a - b);
     expect(xs).toHaveLength(4);
+    xs.forEach((x, i) => close(x, mids[i]));
     // ninguno fuera de las ventanas extremas
     expect(xs[0]).toBeGreaterThan(L0.frontWindows[0].x);
     expect(xs[3]).toBeLessThan(L0.frontWindows[3].x);
-    for (const x of xs) expect(Math.min(...mids.map((m) => Math.abs(m - x)))).toBeLessThan(0.06);
   });
   it("las ventanas del frente quedan 1 a la izquierda y 3 a la derecha de la puerta", () => {
     expect(L0.frontWindows.filter((w) => w.x < L0.frontDoor.x)).toHaveLength(1);
@@ -310,8 +310,10 @@ describe("layout de Barbato's con medidas reales", () => {
       for (const p of L0.vegetation.poplars) expect(Math.hypot(w.x - p.x, w.z - p.z), `sauce ${w.x},${w.z}`).toBeGreaterThanOrEqual(willowR + poplarR);
     }
   });
-  it("la luz del frente cuelga entre los apliques de la puerta", () => {
-    expect(L0.pointLights[0][0]).toBeCloseTo((L0.frontSconces[0].x + L0.frontSconces[1].x) / 2, 6);
+  it("la luz del frente cuelga en el eje de la puerta, entre sus dos apliques", () => {
+    expect(L0.pointLights[0][0]).toBeCloseTo(L0.frontDoor.x, 6);
+    expect(L0.pointLights[0][0]).toBeGreaterThan(L0.frontSconces[0].x);
+    expect(L0.pointLights[0][0]).toBeLessThan(L0.frontSconces[1].x);
   });
   it("mesas", () => {
     expect(L0.tables.map((t) => t.x)).toEqual([-6.5, -6.5, -3.5, -3.5, -0.5, -0.5, 2.5, 2.5, 5.5, 5.5]);
@@ -401,7 +403,8 @@ describe("medidas editables sin ventana a la izquierda de la puerta", () => {
     d.frontWindows.centers = d.frontWindows.centers.filter((c) => c.from !== "front-left");
     const L = computeLayout(d);
     expect(L.frontWindows).toHaveLength(3);
-    expect(L.frontSconces.slice(0, 2)).toEqual([{ x: expect.closeTo(-5.57, 4), y: 2.4 }, { x: expect.closeTo(-0.43, 4), y: 2.4 }]);
+    // sin ventana a la izquierda: a doorGap de la jamba; a la derecha sigue el punto medio hasta la ventana
+    expect(L.frontSconces.slice(0, 2)).toEqual([{ x: expect.closeTo(-4.3 - 1.27, 4), y: 2.4 }, { x: expect.closeTo(-0.425, 4), y: 2.4 }]);
     expect(L.frontSconces).toHaveLength(4);
   });
 });

@@ -19,10 +19,10 @@ export type BarbatosDimensions = {
     sill: number;
     centers: { from: CornerRef; offset: number }[];
   };
+  // Apliques del frente: en el punto medio de cada paño entre aberturas vecinas (puerta–ventana y ventana–ventana).
   frontSconces: {
-    doorGap: number; // distancia a cada jamba de la puerta (punto medio del paño hasta la ventana vecina)
-    doorHeight: number;
-    windowHeight: number;
+    doorGap: number; // solo si no hay ventana de ese lado de la puerta: distancia a la jamba
+    height: number;
   };
   // Tramo de ventanales del fondo, a `cornerInset` de cada esquina del fondo.
   backWindows: {
@@ -163,7 +163,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
       { from: "front-right", offset: 1.45 },
     ],
   },
-  frontSconces: { doorGap: 1.27, doorHeight: 2.4, windowHeight: 2.4 },
+  frontSconces: { doorGap: 1.27, height: 2.4 },
   backWindows: {
     cornerInset: 1.95,
     count: 3,

@@ -19,12 +19,22 @@ const FOLIAGE_ALPHA_TEST = 0.5;
 //   las caras traseras de un material DoubleSide: acá se omite ese giro para que ambas caras usen la normal de la copa.
 // - Sin especular: con el sol bajo detrás de los árboles, el Fresnel de las tarjetas vistas de canto pintaba un halo
 //   amarillo pálido en el borde de las copas. Las hojas quedan mate (solo difusa).
-const KEEP_CROWN_NORMALS = THREE.ShaderChunk.normal_fragment_begin.replace("normal *= faceDirection;", "");
+// Si una versión nueva de three renombra lo que se parchea, falla al cargar el módulo (no en silencio).
+function mustContain(text: string, part: string, where: string): string {
+  if (!text.includes(part)) throw new Error(`foliage shader: "${part}" no está en ${where} (¿cambió three?)`);
+  return text;
+}
+const FLIP = "normal *= faceDirection;";
+const KEEP_CROWN_NORMALS = mustContain(THREE.ShaderChunk.normal_fragment_begin, FLIP, "normal_fragment_begin").replace(FLIP, "");
+for (const field of ["material.specularColor", "material.specularColorBlended", "material.specularF90"]) {
+  mustContain(THREE.ShaderChunk.lights_physical_fragment, field, "lights_physical_fragment");
+}
 const NO_SPECULAR = "material.specularColor = vec3( 0.0 );\nmaterial.specularColorBlended = vec3( 0.0 );\nmaterial.specularF90 = 0.0;";
-function foliageShader(shader: { fragmentShader: string }) {
-  shader.fragmentShader = shader.fragmentShader
-    .replace("#include <normal_fragment_begin>", KEEP_CROWN_NORMALS)
-    .replace("#include <lights_physical_fragment>", `#include <lights_physical_fragment>\n${NO_SPECULAR}`);
+export function foliageShader(shader: { fragmentShader: string }) {
+  const normals = "#include <normal_fragment_begin>", lights = "#include <lights_physical_fragment>";
+  shader.fragmentShader = mustContain(mustContain(shader.fragmentShader, normals, "el fragment shader"), lights, "el fragment shader")
+    .replace(normals, KEEP_CROWN_NORMALS)
+    .replace(lights, `${lights}\n${NO_SPECULAR}`);
 }
 
 export const UNIT: Partial<Record<MaterialKey, number>> = {

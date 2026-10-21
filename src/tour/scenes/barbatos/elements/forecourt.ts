@@ -10,7 +10,7 @@ const STONE_SQUASH = 0.6;
 export const LAVENDER = { width: 0.85, height: 0.8, cards: { high: 5, low: 4 }, top: { y: 0.55, width: 0.8 } } as const;
 
 /** Geometría de una mata (compartida por el InstancedMesh), base en y=0: `cards` laterales + 1 horizontal. */
-export function lavenderGeometry(detail: "high" | "low"): THREE.BufferGeometry {
+function lavenderGeometry(detail: "high" | "low"): THREE.BufferGeometry {
   const { width: w, height: h, top } = LAVENDER;
   const b = new CardBuilder();
   addStar(b, new THREE.Vector3(), LAVENDER.cards[detail], w, h, 0, 0.6, LAVENDER_ATLAS.side);

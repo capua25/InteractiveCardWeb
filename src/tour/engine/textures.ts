@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import type { GeometryDetail } from "../types";
-import { makeFoliageTextures, type FoliageKey } from "./foliage-textures";
+import { makeFoliageTextures } from "./foliage-textures";
 
 export function rng(seed: number): () => number {
   return function () {
@@ -51,7 +51,6 @@ export const TEXTURE_KEYS = [
 ] as const;
 export type TextureKey = (typeof TEXTURE_KEYS)[number];
 export type Textures = Record<TextureKey, THREE.Texture>;
-export type { FoliageKey };
 
 // Todas las texturas del recorrido, generadas una vez por montaje. El follaje (tarjetas con alphaTest) se dibuja a
 // 512 px en desktop y 256 px en celulares.

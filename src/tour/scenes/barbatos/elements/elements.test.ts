@@ -290,11 +290,15 @@ describe("ELEMENTS de Barbato's", () => {
       expect(cardsOf(byMaterial(meshes, "photinia")[0])).toBe(C.photinia);
       expect(cardsOf(byMaterial(meshes, "phormium")[0])).toBe(v.phormiums.length * C.phormium);
     });
-    it("los celulares llevan menos tarjetas que desktop, y los arbolitos de 6 a 10 tarjetas", () => {
-      for (const k of Object.keys(CARDS.high) as (keyof typeof CARDS.high)[]) expect(CARDS.low[k], k).toBeLessThanOrEqual(CARDS.high[k]);
-      expect(CARDS.low.sapling).toBe(6);
-      expect(CARDS.high.sapling).toBe(10);
-      expect(CARDS.high.poplar).toBeGreaterThan(CARDS.low.poplar);
+    it.each([["high", 10], ["low", 6]] as const)("cada arbolito lleva entre 6 y 10 tarjetas (%s: %i), más en desktop", (detail, n) => {
+      const vs = worldVertices(byMaterial(veg(detail), "leaves")[0]);
+      const centers = Array.from({ length: vs.length / 4 }, (_, c) => vs.slice(c * 4, c * 4 + 4).reduce((a, p) => a.add(p), new THREE.Vector3()).multiplyScalar(0.25));
+      for (const s of v.saplings) {
+        const mine = centers.filter((c) => Math.hypot(c.x - s.x, c.z - s.z) < 0.8 && c.y < s.height + 0.5);
+        expect(mine.length, `${s.x}`).toBe(n);
+      }
+      const total = (d: "high" | "low") => cardsOf(byMaterial(veg(d), "leaves")[0]) + cardsOf(byMaterial(veg(d), "willow")[0]) + cardsOf(byMaterial(veg(d), "photinia")[0]) + cardsOf(byMaterial(veg(d), "phormium")[0]);
+      expect(total("low")).toBeLessThan(total("high"));
     });
     it("las tarjetas usan materiales de follaje (alphaTest)", () => {
       for (const m of veg().filter((x) => x.material !== ctx.materials("trunk"))) expect((m.material as THREE.MeshStandardMaterial).alphaTest).toBe(0.5);
@@ -453,8 +457,15 @@ describe("ELEMENTS de Barbato's", () => {
         expect(uv.getX(c * 4 + k)).toBeLessThanOrEqual(LAVENDER_ATLAS.top[2] + 1e-6);
         expect(uv.getY(c * 4 + k)).toBeLessThanOrEqual(LAVENDER_ATLAS.top[3] + 1e-6);
       }
-      // ancho de la tapa ≥ 3/4 del de la mata: desde arriba cubre el centro donde se cruzan las tarjetas
-      expect(LAVENDER.top.width).toBeGreaterThanOrEqual(0.75);
+      // vista desde arriba: la tapa cubre el cruce (0, 0) y llega a ≥ 3/4 del alcance horizontal de las cruzadas
+      const xs = [0, 1, 2, 3].map((k) => pos.getX(c * 4 + k)), zs = [0, 1, 2, 3].map((k) => pos.getZ(c * 4 + k));
+      expect(Math.min(...xs)).toBeLessThan(0);
+      expect(Math.max(...xs)).toBeGreaterThan(0);
+      expect(Math.min(...zs)).toBeLessThan(0);
+      expect(Math.max(...zs)).toBeGreaterThan(0);
+      let reach = 0;
+      for (let k = 0; k < pos.count; k++) if (Math.floor(k / 4) !== c) reach = Math.max(reach, Math.hypot(pos.getX(k), pos.getZ(k)));
+      expect(Math.min(Math.max(...xs), Math.max(...zs))).toBeGreaterThanOrEqual(0.75 * reach * Math.SQRT1_2);
     });
     it("desktop lleva más tarjetas que celulares y el material recorta por alphaTest", () => {
       expect(LAVENDER.cards.high).toBeGreaterThan(LAVENDER.cards.low);

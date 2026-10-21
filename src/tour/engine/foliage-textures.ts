@@ -3,8 +3,9 @@ import type { GeometryDetail } from "../types";
 import { rng } from "./textures";
 
 // Texturas de follaje para tarjetas con alphaTest: dibujadas en canvas una sola vez por montaje (el viewer las crea
-// junto con las demás texturas) y subidas como DataTexture. Fondo transparente; los píxeles vacíos heredan el color
-// medio de las hojas ("bleed") para que el filtrado y los mipmaps no oscurezcan los bordes.
+// junto con las demás texturas) y subidas como DataTexture con mipmaps propios. Fondo transparente; los píxeles
+// vacíos heredan el color medio de las hojas ("bleed") para que el filtrado no oscurezca los bordes, y cada mipmap
+// conserva la cobertura del corte de alphaTest (si no, hebras y tallos finos desaparecen a la distancia).
 
 export type FoliageKey = "leaves" | "photiniaLeaves" | "willow" | "lavender" | "flax";
 
@@ -15,9 +16,12 @@ type Draw = (g: CanvasRenderingContext2D, s: number) => void;
 const TAU = Math.PI * 2;
 const hsl = (h: number, s: number, l: number) => `hsl(${h.toFixed(1)},${s.toFixed(1)}%,${l.toFixed(1)}%)`;
 
-// Copia la imagen del canvas (filas invertidas: fila 0 = abajo, como espera WebGL con uv v=1 arriba) y rellena
-// el RGB de los píxeles transparentes con el promedio de los opacos.
-function bleed(src: Uint8ClampedArray, s: number): Uint8Array {
+/** Corte de alphaTest (0.5) en bytes. */
+export const ALPHA_CUT = 128;
+
+/** Copia la imagen del canvas (filas invertidas: fila 0 = abajo, como espera WebGL con uv v=1 arriba) y rellena
+ * el RGB de los píxeles transparentes con el promedio de los opacos. */
+export function bleed(src: Uint8ClampedArray, s: number): Uint8Array {
   let r = 0, g = 0, b = 0, n = 0;
   for (let i = 0; i < src.length; i += 4) {
     if (src[i + 3] > 128) {
@@ -41,19 +45,72 @@ function bleed(src: Uint8ClampedArray, s: number): Uint8Array {
   return out;
 }
 
-export function alphaTexture(size: number, draw: Draw, maxAnisotropy: number): THREE.DataTexture {
+export type MipLevel = { data: Uint8Array; width: number; height: number };
+
+const coverage = (alpha: (i: number) => number, n: number) => {
+  let c = 0;
+  for (let i = 0; i < n; i++) if (alpha(i) >= ALPHA_CUT) c++;
+  return c / n;
+};
+
+/**
+ * Cadena completa de mipmaps (2×2 → 1, color promediado por alfa) que conserva la cobertura del alphaTest
+ * (Castaño 2010): en cada nivel se escala el alfa para que la fracción de texels ≥ corte sea la del nivel 0. Sin
+ * esto el promedio baja el alfa de los trazos finos por debajo de 0.5 en uno o dos niveles y el follaje se borra.
+ */
+export function coverageMips(base: Uint8Array, size: number): MipLevel[] {
+  const target = coverage((i) => base[i * 4 + 3], size * size);
+  const levels: MipLevel[] = [{ data: base, width: size, height: size }];
+  let raw = base; // nivel anterior sin escalar: se promedia siempre desde el alfa "real"
+  for (let s = size >> 1; s >= 1; s >>= 1) {
+    const src = s * 2;
+    const next = new Uint8Array(s * s * 4);
+    const hist = new Uint32Array(256);
+    for (let y = 0; y < s; y++) {
+      for (let x = 0; x < s; x++) {
+        let r = 0, g = 0, b = 0, a = 0;
+        const i0 = (y * 2 * src + x * 2) * 4;
+        for (const i of [i0, i0 + 4, i0 + src * 4, i0 + src * 4 + 4]) {
+          const w = raw[i + 3] + 1; // +1: los texels transparentes también aportan (traen el color de "bleed")
+          r += raw[i] * w; g += raw[i + 1] * w; b += raw[i + 2] * w; a += w;
+        }
+        const o = (y * s + x) * 4;
+        next[o] = r / a; next[o + 1] = g / a; next[o + 2] = b / a;
+        next[o + 3] = (a - 4) / 4;
+        hist[next[o + 3]]++;
+      }
+    }
+    // umbral t cuya cobertura (texels con alfa ≥ t) es la más cercana a la del nivel 0; escalar por ALPHA_CUT / t
+    // deja exactamente esos texels ≥ corte. Ante un empate, o si si no quedaría nada, se incluye el escalón: mejor
+    // conservar hebras que borrarlas.
+    let t = 255, count = 0;
+    const want = target * s * s;
+    while (t > 1 && count + hist[t] <= want) count += hist[t--];
+    if (t > 1 && hist[t] > 0 && (count === 0 || count + hist[t] - want <= want - count)) t--; // incluir el escalón t
+    const scale = ALPHA_CUT / Math.max(1, t + 1);
+    const out = new Uint8Array(next);
+    for (let i = 3; i < out.length; i += 4) out[i] = Math.min(255, Math.floor(next[i] * scale + 1e-6));
+    levels.push({ data: out, width: s, height: s });
+    raw = next;
+  }
+  return levels;
+}
+
+function alphaTexture(size: number, draw: Draw, maxAnisotropy: number): THREE.DataTexture {
   const c = document.createElement("canvas");
   c.width = c.height = size;
-  const g = c.getContext("2d") as CanvasRenderingContext2D;
+  // se lee una vez con getImageData: sin esto, en móviles el canvas acelerado hace un readback sincrónico de la GPU
+  const g = c.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D;
   draw(g, size);
   const pixels = g.getImageData?.(0, 0, size, size)?.data;
   const data = pixels ? bleed(pixels, size) : new Uint8Array(size * size * 4);
   const t = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  t.mipmaps = coverageMips(data, size);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.ClampToEdgeWrapping;
   t.magFilter = THREE.LinearFilter;
   t.minFilter = THREE.LinearMipmapLinearFilter;
-  t.generateMipmaps = true;
+  t.generateMipmaps = false;
   t.anisotropy = maxAnisotropy;
   t.needsUpdate = true;
   return t;
@@ -139,7 +196,8 @@ const willow: Draw = (g, s) => {
 };
 
 /** Regiones del atlas (u0, v0, u1, v1; v = 0 abajo) de las texturas con más de una vista o variedad. */
-export const LAVENDER_ATLAS = { side: [0, 0.3, 1, 1], top: [0, 0, 0.3, 0.3] } as const;
+// entre la vista de arriba y la lateral queda una franja transparente de 0.02 (5 px a 256): sin sangrado al filtrar
+export const LAVENDER_ATLAS = { side: [0, 0.3, 1, 1], top: [0, 0, 0.28, 0.28] } as const;
 export const FLAX_ATLAS = { bronze: [0, 0, 0.5, 1], variegated: [0.5, 0, 1, 1] } as const;
 
 // Lavanda, vista lateral (dibujada en un cuadrado s×s; el atlas la aplasta a la franja de arriba): mata densa verde
@@ -208,8 +266,8 @@ const lavender: Draw = (g, s) => {
   lavenderSide(g, s, R);
   g.restore();
   g.save();
-  g.translate(0, s * 0.7);
-  g.scale(0.3, 0.3);
+  g.translate(0, s * 0.72);
+  g.scale(0.28, 0.28);
   lavenderTop(g, s, R);
   g.restore();
 };

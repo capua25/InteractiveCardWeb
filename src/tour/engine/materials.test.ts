@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { createMaterials } from "./materials";
 import { barbatosScene } from "../scenes/barbatos";
-import { FOLIAGE_KEYS } from "./materials";
+import { FOLIAGE_KEYS, foliageShader } from "./materials";
 import { TEXTURE_KEYS, type Textures } from "./textures";
 
 const fakeTextures = Object.fromEntries(
@@ -59,19 +59,34 @@ describe("materials", () => {
     for (const [k, t] of Object.entries(maps)) expect(M(k as never).map, k).toBe(fakeTextures[t]);
   });
 
-  it("el follaje conserva la normal de la copa en las caras traseras (no la invierte)", () => {
-    const shader = { fragmentShader: "a\n#include <normal_fragment_begin>\nb" };
+  // se parchea el shader real de MeshStandardMaterial (three 0.186), no un texto armado a mano
+  const patched = () => {
+    const shader = { fragmentShader: THREE.ShaderLib.standard.fragmentShader };
     M("leaves").onBeforeCompile(shader as never, null as never);
-    expect(shader.fragmentShader).not.toContain("#include <normal_fragment_begin>");
-    expect(shader.fragmentShader).not.toContain("normal *= faceDirection");
-    expect(shader.fragmentShader).toContain("vec3 normal = normalize( vNormal );");
+    return shader.fragmentShader;
+  };
+
+  it("los trozos de three que se parchean existen tal cual (si three los renombra, esto falla)", () => {
+    expect(THREE.ShaderChunk.normal_fragment_begin).toContain("normal *= faceDirection;");
+    for (const f of ["material.specularColor", "material.specularColorBlended", "material.specularF90"]) expect(THREE.ShaderChunk.lights_physical_fragment).toContain(f);
+    expect(THREE.ShaderLib.standard.fragmentShader).toContain("#include <normal_fragment_begin>");
+    expect(THREE.ShaderLib.standard.fragmentShader).toContain("#include <lights_physical_fragment>");
+  });
+
+  it("el follaje conserva la normal de la copa en las caras traseras (no la invierte)", () => {
+    const frag = patched();
+    expect(frag).not.toContain("#include <normal_fragment_begin>");
+    expect(frag).not.toContain("normal *= faceDirection");
+    expect(frag).toContain("vec3 normal = normalize( vNormal );");
   });
 
   it("el follaje no tiene especular (sin halo de Fresnel en el borde de las copas a contraluz)", () => {
-    const shader = { fragmentShader: "#include <lights_physical_fragment>\nrest" };
-    M("lavender").onBeforeCompile(shader as never, null as never);
-    expect(shader.fragmentShader).toMatch(/#include <lights_physical_fragment>\s*material\.specularColor = vec3\( 0\.0 \);/);
-    expect(shader.fragmentShader).toContain("material.specularF90 = 0.0;");
+    expect(patched()).toMatch(/#include <lights_physical_fragment>\s*material\.specularColor = vec3\( 0\.0 \);\s*material\.specularColorBlended = vec3\( 0\.0 \);\s*material\.specularF90 = 0\.0;/);
+  });
+
+  it("si al fragment shader le falta un include que se parchea, falla fuerte en vez de dejarlo igual", () => {
+    expect(() => foliageShader({ fragmentShader: "#include <lights_physical_fragment>" })).toThrow(/normal_fragment_begin/);
+    expect(() => foliageShader({ fragmentShader: "#include <normal_fragment_begin>" })).toThrow(/lights_physical_fragment/);
   });
 
   it("los materiales con tinte conservan su multiplicador lineal (puede pasar de 1)", () => {
