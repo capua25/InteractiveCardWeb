@@ -1,13 +1,8 @@
 import * as THREE from "three";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Quality, TourScene } from "../types";
-import type { TextureKey, Textures } from "./textures";
+import { TEXTURE_KEYS as KEYS, type Textures } from "./textures";
 import { clampPan, createViewer, type ViewerDeps } from "./viewer";
-
-const KEYS: TextureKey[] = [
-  "stone", "ceiling", "wood", "roof", "gravel",
-  "plaster", "wallLow", "cement", "grass", "carpet",
-];
 
 const quality: Quality = { pixelRatio: 1.5, shadowMapSize: 1024, antialias: true, maxAnisotropy: 4, detail: "low" };
 
@@ -27,7 +22,7 @@ function fakeRenderer() {
 
 let renderer: ReturnType<typeof fakeRenderer>;
 let env: { texture: THREE.Texture; dispose: ReturnType<typeof vi.fn<() => void>> };
-let createTextures: ReturnType<typeof vi.fn<(maxAnisotropy: number) => Textures>>;
+let createTextures: ReturnType<typeof vi.fn<ViewerDeps["createTextures"]>>;
 let deps: Partial<ViewerDeps>;
 let container: HTMLDivElement;
 let rootMesh: THREE.Mesh;
@@ -53,7 +48,7 @@ function lastRenderedCamera(): THREE.PerspectiveCamera {
 beforeEach(() => {
   renderer = fakeRenderer();
   env = { texture: new THREE.Texture(), dispose: vi.fn<() => void>() };
-  createTextures = vi.fn<(maxAnisotropy: number) => Textures>(() => Object.fromEntries(KEYS.map((k) => [k, new THREE.Texture()])) as Textures);
+  createTextures = vi.fn<ViewerDeps["createTextures"]>(() => Object.fromEntries(KEYS.map((k) => [k, new THREE.Texture()])) as Textures);
   frames = { request: vi.fn(() => 1), cancel: vi.fn(), now: () => 0 };
   curtainGeos = [new THREE.BoxGeometry(), new THREE.BoxGeometry()];
   curtainMats = [new THREE.MeshStandardMaterial(), new THREE.MeshStandardMaterial({ transparent: true, opacity: 0.5 })];
@@ -162,9 +157,10 @@ describe("createViewer", () => {
     expect(renderer.shadowMap.type).toBe(THREE.PCFShadowMap);
   });
 
-  it("cruza la anisotropía de la calidad con la de la GPU", () => {
+  it("cruza la anisotropía de la calidad con la de la GPU y genera las texturas una sola vez, con el detalle de la calidad", () => {
     createViewer(container, scene, quality, { onContextLost, deps });
-    expect(createTextures).toHaveBeenCalledWith(4);
+    expect(createTextures).toHaveBeenCalledTimes(1);
+    expect(createTextures).toHaveBeenCalledWith(4, "low");
   });
 
   it("estado inicial: vista Afuera y techo visible", () => {

@@ -6,8 +6,19 @@ export type MaterialKey =
   | "ceiling" | "wood" | "carpet" | "chair" | "trunk" | "wallLow"
   | "hearth" | "sconce" | "bulb" | "fire" | "glass"
   | "greyStucco" | "frameGray" | "frostedGlass" | "nylon" | "canvas" | "sand" | "woodDark" | "gabion"
-  | "crownLight" | "crownDark" | "photinia" | "phormium" | "lavender"
-  | "lavenderFlower" | "acWhite";
+  | "leaves" | "willow" | "photinia" | "phormium" | "lavender" | "acWhite";
+
+// Follaje en tarjetas: recorte por alphaTest (sin blending, escribe profundidad, sombra recortada por el mismo
+// alphaTest en el depth material automático de three) y alpha-to-coverage para suavizar el borde con MSAA.
+export const FOLIAGE_KEYS = ["leaves", "willow", "photinia", "phormium", "lavender"] as const satisfies readonly MaterialKey[];
+const FOLIAGE_ALPHA_TEST = 0.5;
+
+// Las tarjetas traen normales dobladas hacia afuera de la copa (sombreado de volumen). three invierte la normal en
+// las caras traseras de un material DoubleSide: acá se omite ese giro para que ambas caras usen la normal de la copa.
+const KEEP_CROWN_NORMALS = THREE.ShaderChunk.normal_fragment_begin.replace("normal *= faceDirection;", "");
+function keepCrownNormals(shader: { fragmentShader: string }) {
+  shader.fragmentShader = shader.fragmentShader.replace("#include <normal_fragment_begin>", KEEP_CROWN_NORMALS);
+}
 
 export const UNIT: Partial<Record<MaterialKey, number>> = {
   plaster: 3, stone: 1.6, ceiling: 2.4, wood: 1.2, roof: 2,
@@ -39,7 +50,7 @@ export function createMaterials(
     wood: { map: T.wood, roughness: 0.7 },
     carpet: { map: T.carpet, roughness: 1 },
     chair: { color: "#1e1e20", roughness: 0.6 },
-    trunk: { color: "#5a4030", roughness: 1 },
+    trunk: { color: "#7a7672", roughness: 1 }, // corteza gris: la luz cálida la lleva a gris pardo
     wallLow: { map: T.wallLow, color: tint(2, 3, 5), roughness: 1 },
     hearth: { color: "#141110", roughness: 1 },
     sconce: { color: "#fff1cc", emissive: "#ffcf80", emissiveIntensity: 3 },
@@ -58,12 +69,12 @@ export function createMaterials(
     sand: { color: "#b5c0d2", roughness: 1 },
     woodDark: { color: "#2a2c34", roughness: 0.7 },
     gabion: { map: T.stone, color: tint(2.3, 2.3, 2.5), roughness: 0.9 },
-    crownLight: { color: "#7f9a45", roughness: 1 },
-    crownDark: { color: "#4f7a38", roughness: 1 },
-    photinia: { color: "#8a2a22", roughness: 1 },
-    phormium: { color: "#7a2a2a", roughness: 0.9 },
-    lavender: { color: "#7d8f6a", roughness: 1, flatShading: true },
-    lavenderFlower: { color: "#8a6fc0", roughness: 1 },
+    // follaje: la textura trae el color; el tinte (azul > 1) compensa la luz cálida como en el pasto
+    leaves: { map: T.leaves, color: tint(0.9, 1, 1.35), roughness: 0.9 },
+    willow: { map: T.willow, color: tint(0.85, 1.05, 1.45), roughness: 0.9 },
+    photinia: { map: T.photiniaLeaves, color: tint(1, 1, 1.25), roughness: 0.9 },
+    phormium: { map: T.flax, color: tint(1, 1, 1.3), roughness: 0.8 },
+    lavender: { map: T.lavender, color: tint(0.95, 1, 1.45), roughness: 1 },
     // vidrio: transparente, visible de ambos lados, con reflejo del entorno
     glass: {
       color: "#a9c2cc", roughness: 0.04, metalness: 0.1, transparent: true,
@@ -75,6 +86,12 @@ export function createMaterials(
     let m = cache.get(key);
     if (!m) {
       m = new THREE.MeshStandardMaterial(def[key]);
+      if ((FOLIAGE_KEYS as readonly MaterialKey[]).includes(key)) {
+        m.alphaTest = FOLIAGE_ALPHA_TEST;
+        m.alphaToCoverage = true;
+        m.side = THREE.DoubleSide;
+        m.onBeforeCompile = keepCrownNormals;
+      }
       cache.set(key, m);
     }
     return m;

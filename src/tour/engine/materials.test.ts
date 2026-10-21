@@ -2,14 +2,11 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { createMaterials } from "./materials";
 import { barbatosScene } from "../scenes/barbatos";
-import type { TextureKey, Textures } from "./textures";
+import { FOLIAGE_KEYS } from "./materials";
+import { TEXTURE_KEYS, type Textures } from "./textures";
 
-const keys: TextureKey[] = [
-  "stone", "ceiling", "wood", "roof", "gravel",
-  "plaster", "wallLow", "cement", "grass", "carpet",
-];
 const fakeTextures = Object.fromEntries(
-  keys.map((k) => [k, new THREE.Texture()]),
+  TEXTURE_KEYS.map((k) => [k, new THREE.Texture()]),
 ) as Textures;
 const M = createMaterials(fakeTextures, null, { roof: "#3b4f66" });
 
@@ -50,9 +47,24 @@ describe("materials", () => {
     });
   });
 
-  it("las copas no usan flatShading (normales suaves de la geometría)", () => {
-    expect(M("crownLight").flatShading).toBe(false);
-    expect(M("photinia").flatShading).toBe(false);
+  it("el follaje es de tarjetas recortadas: alphaTest 0.5, sin blending, escribe profundidad, doble cara", () => {
+    for (const k of FOLIAGE_KEYS) {
+      expect(M(k), k).toMatchObject({ alphaTest: 0.5, alphaToCoverage: true, transparent: false, depthWrite: true, side: THREE.DoubleSide, flatShading: false });
+      expect(typeof M(k).onBeforeCompile, k).toBe("function");
+    }
+  });
+
+  it("cada follaje usa su textura de canvas (la misma instancia: se genera una vez)", () => {
+    const maps = { leaves: "leaves", willow: "willow", photinia: "photiniaLeaves", phormium: "flax", lavender: "lavender" } as const;
+    for (const [k, t] of Object.entries(maps)) expect(M(k as never).map, k).toBe(fakeTextures[t]);
+  });
+
+  it("el follaje conserva la normal de la copa en las caras traseras (no la invierte)", () => {
+    const shader = { fragmentShader: "a\n#include <normal_fragment_begin>\nb" };
+    M("leaves").onBeforeCompile(shader as never, null as never);
+    expect(shader.fragmentShader).not.toContain("#include <normal_fragment_begin>");
+    expect(shader.fragmentShader).not.toContain("normal *= faceDirection");
+    expect(shader.fragmentShader).toContain("vec3 normal = normalize( vNormal );");
   });
 
   it("los materiales con tinte conservan su multiplicador lineal (puede pasar de 1)", () => {
@@ -68,9 +80,8 @@ describe("materials", () => {
 
   it("los materiales nuevos tienen los colores de las fotos", () => {
     const hex: Record<string, string> = {
-      crownLight: "7f9a45", crownDark: "4f7a38", sand: "b5c0d2",
-      greyStucco: "76a0c4", frameGray: "8a8f86", frostedGlass: "9db3ae",
-      photinia: "8a2a22", woodDark: "2a2c34",
+      sand: "b5c0d2", greyStucco: "76a0c4", frameGray: "8a8f86", frostedGlass: "9db3ae",
+      woodDark: "2a2c34", trunk: "7a7672",
     };
     for (const [k, v] of Object.entries(hex)) {
       expect(M(k as never).color.getHexString(), k).toBe(v);

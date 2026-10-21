@@ -5,7 +5,8 @@ import { BARBATOS_DIMENSIONS } from "../dimensions";
 import { BARBATOS_LAYOUT, computeLayout } from "../layout";
 import { CURTAIN_ROLLED_SCALE } from "@/tour/engine/curtains";
 import { ELEMENTS } from "./index";
-import { treeCrowns, crownGeometry } from "./vegetation";
+import { LAVENDER } from "./forecourt";
+import { CARDS, treeCrowns } from "./vegetation";
 
 const ctx = { ...createTestEngineContext(), layout: BARBATOS_LAYOUT };
 
@@ -61,7 +62,7 @@ describe("ELEMENTS de Barbato's", () => {
     for (let i = 0; i < pos.count; i += 7) expect(uv.getX(i)).toBeCloseTo(pos.getX(i) / 2.5, 6);
   });
 
-  it("forecourt: 3 InstancedMesh (piedras, matas, flores) y ningún mesh suelto", () => {
+  it("forecourt: 2 InstancedMesh (piedras, lavandas en tarjetas) y ningún mesh suelto", () => {
     const obj = ELEMENTS.find((e) => e.id === "forecourt")!.build(ctx);
     const instanced: THREE.InstancedMesh[] = [];
     let plain = 0;
@@ -72,7 +73,6 @@ describe("ELEMENTS de Barbato's", () => {
     expect(instanced.map((m) => [m.material, m.count])).toEqual([
       [ctx.materials("gabion"), BARBATOS_LAYOUT.forecourt.border.length],
       [ctx.materials("lavender"), BARBATOS_LAYOUT.forecourt.lavender.length],
-      [ctx.materials("lavenderFlower"), BARBATOS_LAYOUT.forecourt.lavender.length],
     ]);
     expect(plain).toBe(0);
   });
@@ -247,15 +247,86 @@ describe("ELEMENTS de Barbato's", () => {
   });
 
   describe("vegetación", () => {
-    const veg = () => {
+    const build = (detail: "high" | "low" = "low") => ELEMENTS.find((e) => e.id === "vegetation")!.build({ ...ctx, detail });
+    const veg = (detail: "high" | "low" = "low") => {
       const out: THREE.Mesh[] = [];
-      ELEMENTS.find((e) => e.id === "vegetation")!.build(ctx).traverse((o) => {
+      build(detail).traverse((o) => {
         if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh);
       });
       return out;
     };
-    it("vegetation usa a lo sumo 9 draw calls", () => {
-      expect(veg().length).toBeLessThanOrEqual(9);
+    const byMaterial = (meshes: THREE.Mesh[], key: Parameters<typeof ctx.materials>[0]) => meshes.filter((m) => m.material === ctx.materials(key));
+    const cardsOf = (m: THREE.Mesh) => m.geometry.getAttribute("position").count / 4;
+    const v = BARBATOS_LAYOUT.vegetation;
+    // Vértices en coordenadas del lote (aplicando la matriz de cada instancia si es InstancedMesh).
+    const worldVertices = (m: THREE.Mesh) => {
+      const inst = (m as THREE.InstancedMesh).isInstancedMesh ? (m as THREE.InstancedMesh) : null;
+      const pos = m.geometry.getAttribute("position");
+      const out: THREE.Vector3[] = [];
+      const mat = new THREE.Matrix4();
+      for (let i = 0; i < (inst ? inst.count : 1); i++) {
+        if (inst) inst.getMatrixAt(i, mat);
+        for (let k = 0; k < pos.count; k++) out.push(new THREE.Vector3().fromBufferAttribute(pos, k).applyMatrix4(mat));
+      }
+      return out;
+    };
+
+    it("vegetation usa 5 draw calls: troncos, hojas, sauces, fotinia, formios", () => {
+      const meshes = veg();
+      expect(meshes).toHaveLength(5);
+      for (const k of ["trunk", "leaves", "willow", "photinia", "phormium"] as const) expect(byMaterial(meshes, k), k).toHaveLength(1);
+    });
+    it("el detalle no cambia la cantidad de meshes (draw calls)", () => {
+      expect(veg("high").length).toBe(veg("low").length);
+    });
+    it.each(["high", "low"] as const)("tarjetas por especie (%s)", (detail) => {
+      const C = CARDS[detail];
+      const meshes = veg(detail);
+      const trees = v.saplings.length * C.sapling + v.tallSaplings.length * C.tall + v.wallRow.length * C.wallRow + v.poplars.length * C.poplar;
+      expect(cardsOf(byMaterial(meshes, "leaves")[0])).toBe(trees);
+      expect(cardsOf(byMaterial(meshes, "willow")[0])).toBe(v.willows.length * (C.willowDome + C.willowSkirt));
+      expect(cardsOf(byMaterial(meshes, "photinia")[0])).toBe(C.photinia);
+      const flax = byMaterial(meshes, "phormium")[0] as THREE.InstancedMesh;
+      expect(flax.isInstancedMesh).toBe(true);
+      expect(flax.count).toBe(v.phormiums.length);
+      expect(cardsOf(flax)).toBe(C.phormium);
+    });
+    it("los celulares llevan menos tarjetas que desktop, y las copas de 6 a 10 tarjetas en los arbolitos", () => {
+      for (const k of Object.keys(CARDS.high) as (keyof typeof CARDS.high)[]) expect(CARDS.low[k], k).toBeLessThanOrEqual(CARDS.high[k]);
+      expect(CARDS.low.sapling).toBe(6);
+      expect(CARDS.high.sapling).toBe(10);
+      expect(CARDS.high.poplar).toBeGreaterThan(CARDS.low.poplar);
+    });
+    it("las tarjetas usan materiales de follaje (alphaTest) con normales hacia afuera de la copa", () => {
+      const leaves = byMaterial(veg(), "leaves")[0];
+      expect((leaves.material as THREE.MeshStandardMaterial).alphaTest).toBe(0.5);
+      const ph = byMaterial(veg(), "photinia")[0];
+      const pos = ph.geometry.getAttribute("position"), nor = ph.geometry.getAttribute("normal");
+      const center = new THREE.Vector3(v.photinia.x, 2.9, v.photinia.z);
+      for (let i = 0; i < pos.count; i++) {
+        const out = new THREE.Vector3().fromBufferAttribute(pos, i).sub(center);
+        expect(new THREE.Vector3().fromBufferAttribute(nor, i).dot(out), `vértice ${i}`).toBeGreaterThan(0);
+      }
+    });
+    it("cada árbol del layout conserva su posición: el tronco arranca en (x, 0, z)", () => {
+      const trunk = byMaterial(veg(), "trunk")[0];
+      const base = worldVertices(trunk).filter((p) => Math.abs(p.y) < 1e-6);
+      const trees = [...v.saplings, ...v.tallSaplings, ...v.wallRow, ...v.poplars, ...v.willows, v.photinia];
+      for (const t of trees) {
+        const near = base.filter((p) => Math.hypot(p.x - t.x, p.z - t.z) < 0.2);
+        expect(near.length, `${t.x},${t.z}`).toBeGreaterThan(0);
+      }
+    });
+    it("los formios se plantan en sus posiciones con alto entre 1.4 y 2.2", () => {
+      const flax = byMaterial(veg(), "phormium")[0] as THREE.InstancedMesh;
+      const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+      v.phormiums.forEach((f, i) => {
+        flax.getMatrixAt(i, m);
+        m.decompose(p, q, sc);
+        expect([p.x, p.y, p.z]).toEqual([expect.closeTo(f.x, 5), 0, expect.closeTo(f.z, 5)]);
+        expect(sc.y).toBeGreaterThanOrEqual(1.4);
+        expect(sc.y).toBeLessThanOrEqual(2.2);
+      });
     });
     it("ninguna copa toca la arena hexagonal ni un poste de la guirnalda (≥0.5 m)", () => {
       const { sandVertices: hex, x: cx, z: cz, sandRadius } = BARBATOS_LAYOUT.firePit;
@@ -273,26 +344,19 @@ describe("ELEMENTS de Barbato's", () => {
         }
       }
     });
-    it("los álamos (con jitter) quedan dentro del muro izquierdo", () => {
-      for (const p of BARBATOS_LAYOUT.vegetation.poplars) expect(p.x - 0.7 * 1.15).toBeGreaterThan(-BARBATOS_LAYOUT.lot.halfWidth + BARBATOS_LAYOUT.lot.wallThickness / 2);
-    });
-    it("las copas de alto detalle tienen más vértices que las de bajo", () => {
-      expect(crownGeometry("high").getAttribute("position").count).toBeGreaterThan(crownGeometry("low").getAttribute("position").count);
-    });
-    it("la copa comparte vértices entre caras (normales suaves, no facetada)", () => {
-      for (const d of ["high", "low"] as const) {
-        const g = crownGeometry(d);
-        expect(g.index).not.toBeNull();
-        expect(g.getAttribute("position").count).toBeLessThan(g.index!.count);
+    it("las tarjetas de cada copa no salen del radio de despeje declarado en treeCrowns", () => {
+      const crowns = treeCrowns(BARBATOS_LAYOUT);
+      for (const m of veg("high").filter((x) => x.material !== ctx.materials("trunk"))) {
+        for (const p of worldVertices(m)) {
+          // la esquina de una tarjeta puede asomar hasta 0.4 m del contorno (menos que el despeje de 0.5 m exigido arriba)
+          expect(crowns.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < c.radius + 0.4), `${p.x},${p.z}`).toBe(true);
+        }
       }
     });
-    it("el detalle no cambia la cantidad de meshes (draw calls)", () => {
-      const count = (detail: "high" | "low") => {
-        let n = 0;
-        ELEMENTS.find((e) => e.id === "vegetation")!.build({ ...ctx, detail }).traverse((o) => { if ((o as THREE.Mesh).isMesh) n++; });
-        return n;
-      };
-      expect(count("high")).toBe(count("low"));
+    it("los álamos (con jitter) quedan dentro del muro izquierdo", () => {
+      for (const p of v.poplars) expect(p.x - 0.7 * 1.15).toBeGreaterThan(-BARBATOS_LAYOUT.lot.halfWidth + BARBATOS_LAYOUT.lot.wallThickness / 2);
+      const wall = -BARBATOS_LAYOUT.lot.halfWidth + BARBATOS_LAYOUT.lot.wallThickness / 2;
+      for (const m of veg("high")) for (const p of worldVertices(m)) expect(p.x).toBeGreaterThan(wall);
     });
     it("park ya no planta árboles", () => {
       const parkObj = ELEMENTS.find((e) => e.id === "park")!.build(ctx);
@@ -302,15 +366,8 @@ describe("ELEMENTS de Barbato's", () => {
     });
     it("no hay árboles fuera del muro ni conífera junto a la chimenea", () => {
       const { lot, hall } = BARBATOS_LAYOUT;
-      for (const m of veg()) {
-        m.geometry.computeBoundingBox();
-        const inst = (m as THREE.InstancedMesh).isInstancedMesh ? (m as THREE.InstancedMesh) : null;
-        const n = inst ? inst.count : 1;
-        const mat = new THREE.Matrix4();
-        for (let i = 0; i < n; i++) {
-          if (inst) inst.getMatrixAt(i, mat);
-          else mat.identity();
-          const p = new THREE.Vector3().setFromMatrixPosition(mat);
+      for (const m of veg("high")) {
+        for (const p of worldVertices(m)) {
           expect(Math.abs(p.x), `${p.x},${p.z}`).toBeLessThan(lot.halfWidth);
           expect(p.z).toBeGreaterThan(lot.zBack);
           expect(p.z).toBeLessThan(lot.zFront);
@@ -318,6 +375,33 @@ describe("ELEMENTS de Barbato's", () => {
           expect(p.x > hall.hx && p.x < hall.hx + 9 && Math.abs(p.z) < hall.hz, `${p.x},${p.z}`).toBe(false);
         }
       }
+    });
+  });
+
+  describe("lavandas", () => {
+    const lav = (detail: "high" | "low") => {
+      let found: THREE.InstancedMesh | undefined;
+      ELEMENTS.find((e) => e.id === "forecourt")!.build({ ...ctx, detail }).traverse((o) => {
+        if ((o as THREE.InstancedMesh).isInstancedMesh && (o as THREE.InstancedMesh).material === ctx.materials("lavender")) found = o as THREE.InstancedMesh;
+      });
+      return found!;
+    };
+    it.each(["high", "low"] as const)("cada mata son tarjetas cruzadas (%s) en las posiciones del layout, con escala variable", (detail) => {
+      const m = lav(detail);
+      expect(m.geometry.getAttribute("position").count / 4).toBe(LAVENDER.cards[detail]);
+      const mat = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+      const scales = new Set<number>();
+      BARBATOS_LAYOUT.forecourt.lavender.forEach((pt, i) => {
+        m.getMatrixAt(i, mat);
+        mat.decompose(p, q, sc);
+        expect([p.x, p.y, p.z]).toEqual([expect.closeTo(pt.x, 5), 0, expect.closeTo(pt.z, 5)]);
+        scales.add(Math.round(sc.x * 100));
+      });
+      expect(scales.size).toBeGreaterThan(3);
+    });
+    it("desktop lleva más tarjetas que celulares y el material recorta por alphaTest", () => {
+      expect(LAVENDER.cards.high).toBeGreaterThan(LAVENDER.cards.low);
+      expect((lav("low").material as THREE.MeshStandardMaterial).alphaTest).toBe(0.5);
     });
   });
 

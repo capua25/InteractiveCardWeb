@@ -12,7 +12,7 @@ import { makeTextures, type Textures } from "./textures";
 export type ViewerDeps = {
   createRenderer(quality: Quality): THREE.WebGLRenderer;
   createEnvironment(renderer: THREE.WebGLRenderer): { texture: THREE.Texture; dispose(): void };
-  createTextures(maxAnisotropy: number): Textures;
+  createTextures(maxAnisotropy: number, detail: Quality["detail"]): Textures;
   frames: FrameScheduler;
 };
 
@@ -96,7 +96,7 @@ export function createViewer(
 
     const env = deps.createEnvironment(renderer);
     undo.push(() => env.dispose());
-    const textures = deps.createTextures(Math.min(quality.maxAnisotropy, renderer.capabilities.getMaxAnisotropy()));
+    const textures = deps.createTextures(Math.min(quality.maxAnisotropy, renderer.capabilities.getMaxAnisotropy()), quality.detail);
     undo.push(() => {
       for (const t of Object.values(textures)) t.dispose();
     });

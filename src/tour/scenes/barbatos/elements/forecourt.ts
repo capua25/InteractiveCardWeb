@@ -1,9 +1,11 @@
 import * as THREE from "three";
 import type { SceneElement } from "@/tour/types";
 import type { BarbatosLayout } from "../layout";
+import { starGeometry } from "./vegetation";
 
 const STONE_SQUASH = 0.6;
-const FLOWER_LIFT = 0.3;
+// Mata de lavanda: tarjetas verticales cruzadas (más en desktop) con la textura de tallos y espigas.
+export const LAVENDER = { width: 0.85, height: 0.8, cards: { high: 4, low: 3 } } as const;
 
 function instanced(geo: THREE.BufferGeometry, material: THREE.Material, matrices: THREE.Matrix4[]): THREE.InstancedMesh {
   const mesh = new THREE.InstancedMesh(geo, material, matrices.length);
@@ -12,10 +14,10 @@ function instanced(geo: THREE.BufferGeometry, material: THREE.Material, matrices
   return mesh;
 }
 
-// Borde de piedras (aplastadas, sobre el pedregullo) y lavandas (mata + flor), todo instanciado: 3 draw calls.
+// Borde de piedras (aplastadas, sobre el pedregullo) y lavandas (tarjetas cruzadas), todo instanciado: 2 draw calls.
 export const forecourt: SceneElement<BarbatosLayout> = {
   id: "forecourt",
-  build({ layout: l, materials }) {
+  build({ layout: l, materials, detail = "low" }) {
     const g = new THREE.Group();
     const m = new THREE.Matrix4();
     const q = new THREE.Quaternion();
@@ -28,10 +30,9 @@ export const forecourt: SceneElement<BarbatosLayout> = {
 
     // variación de tamaño por mata (determinista por índice) para que no se vea una fila de clones
     const scaleOf = (i: number) => 0.8 + 0.45 * ((i * 0.618) % 1);
-    const bushes = l.forecourt.lavender.map((p, i) => m.compose(new THREE.Vector3(p.x, 0.35 * scaleOf(i), p.z), q.identity(), new THREE.Vector3(1, 1, 1).multiplyScalar(scaleOf(i))).clone());
-    const flowers = l.forecourt.lavender.map((p, i) => m.compose(new THREE.Vector3(p.x, 0.35 * scaleOf(i) + FLOWER_LIFT * scaleOf(i), p.z), q.identity(), new THREE.Vector3(1, 1, 1).multiplyScalar(scaleOf(i))).clone());
-    g.add(instanced(new THREE.SphereGeometry(0.35, 6, 4), materials("lavender"), bushes));
-    g.add(instanced(new THREE.SphereGeometry(0.2, 5, 3), materials("lavenderFlower"), flowers));
+    const up = new THREE.Vector3(0, 1, 0);
+    const bushes = l.forecourt.lavender.map((p, i) => m.compose(new THREE.Vector3(p.x, 0, p.z), q.setFromAxisAngle(up, i * 1.7), new THREE.Vector3(1, 1, 1).multiplyScalar(scaleOf(i))).clone());
+    g.add(instanced(starGeometry(LAVENDER.cards[detail], LAVENDER.width, LAVENDER.height), materials("lavender"), bushes));
     return g;
   },
 };

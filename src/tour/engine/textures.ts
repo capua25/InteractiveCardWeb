@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import type { GeometryDetail } from "../types";
+import { makeFoliageTextures, type FoliageKey } from "./foliage-textures";
 
 export function rng(seed: number): () => number {
   return function () {
@@ -42,12 +44,18 @@ export function canvasTex(
   return t;
 }
 
-export type TextureKey =
-  | "stone" | "ceiling" | "wood" | "roof" | "gravel"
-  | "plaster" | "wallLow" | "cement" | "grass" | "carpet";
+export const TEXTURE_KEYS = [
+  "stone", "ceiling", "wood", "roof", "gravel",
+  "plaster", "wallLow", "cement", "grass", "carpet",
+  "leaves", "photiniaLeaves", "willow", "lavender", "flax",
+] as const;
+export type TextureKey = (typeof TEXTURE_KEYS)[number];
 export type Textures = Record<TextureKey, THREE.Texture>;
+export type { FoliageKey };
 
-export function makeTextures(maxAnisotropy: number): Textures {
+// Todas las texturas del recorrido, generadas una vez por montaje. El follaje (tarjetas con alphaTest) se dibuja a
+// 512 px en desktop y 256 px en celulares.
+export function makeTextures(maxAnisotropy: number, detail: GeometryDetail = "high"): Textures {
   const tex = (size: number, draw: (g: CanvasRenderingContext2D, s: number) => void) =>
     canvasTex(size, draw, maxAnisotropy);
 
@@ -165,5 +173,8 @@ export function makeTextures(maxAnisotropy: number): Textures {
     noise(g, s, 3000, 1, ["#b83030", "#5e1010"], 0.25);
   });
 
-  return { stone, ceiling, wood: ceiling, roof, gravel, plaster, wallLow, cement, grass, carpet };
+  return {
+    stone, ceiling, wood: ceiling, roof, gravel, plaster, wallLow, cement, grass, carpet,
+    ...makeFoliageTextures(detail, maxAnisotropy),
+  };
 }
