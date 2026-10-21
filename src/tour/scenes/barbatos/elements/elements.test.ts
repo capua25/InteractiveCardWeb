@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { createTestEngineContext } from "@/tour/engine/test-context";
-import { BARBATOS_LAYOUT } from "../layout";
+import { BARBATOS_DIMENSIONS } from "../dimensions";
+import { BARBATOS_LAYOUT, computeLayout } from "../layout";
 import { ELEMENTS } from "./index";
 
 const ctx = { ...createTestEngineContext(), layout: BARBATOS_LAYOUT };
@@ -49,5 +50,37 @@ describe("ELEMENTS de Barbato's", () => {
         .filter((m) => m.material === ctx.materials("metal"))
         .every((m) => Math.abs(m.position.x - BARBATOS_LAYOUT.chimney.flue.x) < 1e-6),
     ).toBe(true);
+  });
+
+  it("la galería sigue a postInset, postHeight y sconceHeight editados", () => {
+    const d = structuredClone(BARBATOS_DIMENSIONS);
+    d.gallery.postInset = 0.4;
+    d.gallery.postHeight = 3.6;
+    d.backWindows.sconceHeight = 3.1;
+    const layout = computeLayout(d);
+    const edited = { ...ctx, layout };
+    const meshes = (id: string) => {
+      const out: THREE.Mesh[] = [];
+      ELEMENTS.find((e) => e.id === id)!.build(edited).traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh);
+      });
+      return out;
+    };
+    const size = (m: THREE.Mesh) => {
+      m.geometry.computeBoundingBox();
+      return m.geometry.boundingBox!.getSize(new THREE.Vector3());
+    };
+    const gallery = meshes("gallery");
+    const floor = gallery.find((m) => m.material === ctx.materials("cement"))!;
+    expect(size(floor).z).toBeCloseTo(d.gallery.depth, 5);
+    expect(floor.position.z + size(floor).z / 2).toBeCloseTo(layout.gallery.zInner, 5);
+    const sconces = gallery.filter((m) => m.material === ctx.materials("sconce"));
+    expect(sconces).toHaveLength(layout.backSconcesX.length);
+    expect(sconces.every((m) => m.position.y === 3.1)).toBe(true);
+    const posts = gallery.filter((m) => m.material === ctx.materials("metal") && Math.abs(size(m).x - 0.12) < 1e-5);
+    expect(posts).toHaveLength(layout.gallery.postsX.length);
+    expect(posts.every((m) => Math.abs(size(m).y - 3.6) < 1e-5)).toBe(true);
+    const [roof] = meshes("gallery-roof");
+    expect(roof.position.y).toBeCloseTo(3.6 + 0.05, 6);
   });
 });

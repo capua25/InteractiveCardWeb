@@ -23,6 +23,7 @@ export type BarbatosLayout = {
   backWindows: Opening[];
   backWindowGrid: { cols: number; rows: number };
   backSconcesX: number[];
+  backSconceY: number;
   gableWindows: { z: number; width: number; height: number; sill: number }[];
   plinth: { height: number; thickness: number; front: Segment[]; back: Segment[] };
   trussesX: number[];
@@ -37,7 +38,7 @@ export type BarbatosLayout = {
   carpet: { x0: number; x1: number; width: number };
   annex: { x: number; width: number; height: number; zFront: number; zBack: number };
   pergola: { z: number; height: number; columnsX: number[] };
-  gallery: { zInner: number; zPosts: number; zRoofOuter: number; postsX: number[] };
+  gallery: { zInner: number; zPosts: number; zRoofOuter: number; depth: number; postHeight: number; postsX: number[] };
   park: {
     wall: { zStart: number; z: number; halfWidth: number; height: number };
     trees: { x: number; z: number; scale: number }[];
@@ -172,6 +173,8 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     zInner: -hz,
     zPosts: -hz - g.depth - g.postInset,
     zRoofOuter: -hz - g.depth - g.roofOverhang,
+    depth: g.depth,
+    postHeight: g.postHeight,
     postsX: Array.from({ length: g.postCount }, (_, i) => -hx + (i + 1) * g.postSpacing),
   };
 
@@ -244,6 +247,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     backWindows,
     backWindowGrid: { ...bw.grid },
     backSconcesX,
+    backSconceY: bw.sconceHeight,
     gableWindows,
     plinth,
     trussesX,

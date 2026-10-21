@@ -25,6 +25,7 @@ describe("layout de Barbato's reproduce el v6", () => {
     expect(L0.backWindows.map((w) => w.x)).toEqual([expect.closeTo(-6.8667, 3), 0, expect.closeTo(6.8667, 3)]);
     expect(L0.backWindowGrid).toEqual({ cols: 6, rows: 3 });
     expect(L0.backSconcesX).toEqual([-10.55, expect.closeTo(-3.4333, 3), expect.closeTo(3.4333, 3), 10.55]);
+    expect(L0.backSconceY).toBe(2.6);
   });
   it("zócalo cortado en puerta y ventanales", () => {
     expect(L0.plinth.front).toEqual([{ x0: -12.06, x1: -1.25 }, { x0: 1.25, x1: 12.06 }]);
@@ -42,7 +43,7 @@ describe("layout de Barbato's reproduce el v6", () => {
   it("anexo, pérgola y galería", () => {
     expect(L0.annex).toEqual({ x: -15, width: 6, height: 3.2, zFront: 4, zBack: -9.35 });
     expect(L0.pergola).toEqual({ z: 9, height: 3.4, columnsX: [-2.4, 2.4] });
-    expect(L0.gallery).toMatchObject({ zInner: -6, zPosts: -9.1, zRoofOuter: -9.35, postsX: [-8, -4, 0, 4, 8, 12] });
+    expect(L0.gallery).toMatchObject({ zInner: -6, zPosts: -9.1, zRoofOuter: -9.35, depth: 3, postHeight: 3, postsX: [-8, -4, 0, 4, 8, 12] });
   });
   it("el anexo llega al borde del techo de la galería", () => { expect(L0.annex.zBack).toBe(L0.gallery.zRoofOuter); });
   it("parque, patio, mesas, luces y caja del target", () => {

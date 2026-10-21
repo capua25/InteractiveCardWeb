@@ -62,6 +62,7 @@ export type BarbatosDimensions = {
     postInset: number;
     postSpacing: number;
     postCount: number; // postes desde la esquina izquierda, sin contar la esquina
+    postHeight: number;
   };
   park: {
     wallHeight: number;
@@ -126,7 +127,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   carpet: { width: 1.8, fromLeftWall: 0.2, chimneyGap: 0.3 },
   annex: { width: 6, height: 3.2, setbackFromFront: 2 },
   pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.4 },
-  gallery: { depth: 3, roofDepth: 3.4, roofOverhang: 0.35, postInset: 0.1, postSpacing: 4, postCount: 6 },
+  gallery: { depth: 3, roofDepth: 3.4, roofOverhang: 0.35, postInset: 0.1, postSpacing: 4, postCount: 6, postHeight: 3 },
   park: {
     wallHeight: 1.1,
     wallDistanceFromBack: 20,

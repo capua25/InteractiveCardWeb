@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import type { SceneElement } from "@/tour/types";
 import type { BarbatosLayout } from "../layout";
-import { GALLERY_POST_HEIGHT } from "./gallery";
 
 const POLE_HEIGHT = 3.3;
 const HANG_Y = POLE_HEIGHT - 0.1; // altura de enganche en el poste
@@ -25,7 +24,7 @@ export const garland: SceneElement<BarbatosLayout> = {
     const bulbs: THREE.Vector3[] = [];
     for (const x of polesX) {
       g.add(P.cyl(0.05, POLE_HEIGHT, "metal", [x, POLE_HEIGHT / 2, poleZ], 6));
-      const a = new THREE.Vector3(x, GALLERY_POST_HEIGHT - 0.1, l.gallery.zPosts);
+      const a = new THREE.Vector3(x, l.gallery.postHeight - 0.1, l.gallery.zPosts);
       catenary(a, new THREE.Vector3(x + 2.5, HANG_Y, poleZ), 16, 0.7, bulbs);
     }
     for (let i = 0; i < polesX.length - 1; i++) {
