@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { createMaterials } from "./materials";
-import { ROOF_COLOR } from "../scenes/barbatos/dimensions";
+import { barbatosScene } from "../scenes/barbatos";
 import type { TextureKey, Textures } from "./textures";
 
 const keys: TextureKey[] = [
@@ -36,8 +36,9 @@ describe("materials", () => {
     expect(M("bulb").emissiveIntensity).toBe(4);
   });
 
-  it("la chapa de Barbato's es gris grafito", () => {
-    expect(ROOF_COLOR).toBe("#6b6e75");
+  it("la escena de Barbato's pinta la chapa de gris grafito", () => {
+    const sceneM = createMaterials(fakeTextures, null, barbatosScene.palette);
+    expect(sceneM("roof").color.getHexString()).toBe("6b6e75");
   });
 
   it("el nylon es transparente, de doble cara y no escribe profundidad", () => {
