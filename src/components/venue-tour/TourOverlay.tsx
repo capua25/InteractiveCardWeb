@@ -23,7 +23,7 @@ const toggleClass = (active: boolean) =>
   `${buttonClass} ${active ? "bg-primary text-white" : "bg-white/10 text-white hover:bg-white/20"}`;
 
 export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayProps) {
-  // Corre en el cliente: el overlay se monta con next/dynamic({ ssr: false }).
+  // Corre solo en el cliente: TourLauncher lo monta tras el toque (open arranca en false), nunca en SSR.
   const [supported] = useState(hasWebGL);
   const [status, setStatus] = useState<Status>(supported ? "loading" : "unsupported");
   const [attempt, setAttempt] = useState(0);

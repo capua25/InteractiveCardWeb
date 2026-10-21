@@ -1,6 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
 // El chunk de three se reconoce por literales que sobreviven a la minificación.
+function isThreeChunk(body: string): boolean {
+  return body.includes("MeshStandardMaterial") && body.includes("#include <");
+}
+
 function trackThreeChunks(page: Page): () => string[] {
   const urls: string[] = [];
   page.on("response", async (response) => {
@@ -8,7 +12,7 @@ function trackThreeChunks(page: Page): () => string[] {
     if (!/\/_next\/static\/chunks\/.+\.js(\?|$)/.test(url)) return;
     try {
       const body = await response.text();
-      if (body.includes("MeshStandardMaterial") && body.includes("#include <")) urls.push(url);
+      if (isThreeChunk(body)) urls.push(url);
     } catch {
       // Respuesta descartada (navegación): no aporta.
     }
@@ -59,17 +63,27 @@ test("three no se descarga antes del toque y sí después", async ({ page }) => 
 test("muestra el loader mientras baja el recorrido", async ({ page }) => {
   await openCard(page);
   await page.waitForLoadState("networkidle");
-  // Se demoran los chunks que piden el overlay y la escena para ver el estado de carga.
-  await page.route("**/_next/static/chunks/*.js", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    await route.continue();
+  // Solo se demora el chunk de three (lo trae la escena): el overlay ya está en el JS inicial.
+  const chunks = "**/_next/static/chunks/*.js";
+  await page.route(chunks, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    if (isThreeChunk(body)) await new Promise((resolve) => setTimeout(resolve, 1500));
+    await route.fulfill({ response, body });
   });
-  await page.getByRole("button", { name: "Recorrer el salón" }).tap();
-  const loader = page.getByTestId("tour-loader");
-  await expect(loader).toBeVisible();
-  await expect(loader.getByRole("status")).toHaveText("Cargando el recorrido…");
-  await expect(page.getByRole("dialog").locator("canvas")).toBeVisible({ timeout: 15_000 });
-  await expect(loader).toHaveCount(0);
+  try {
+    await page.getByRole("button", { name: "Recorrer el salón" }).tap();
+    const dialog = page.getByRole("dialog", { name: "Recorrido 3D de Barbato's" });
+    const loader = dialog.getByTestId("tour-loader");
+    await expect(loader).toBeVisible();
+    await expect(loader.getByRole("status")).toHaveText("Cargando el recorrido…");
+    // Mientras carga, Cerrar ya está disponible.
+    await expect(dialog.getByRole("button", { name: "Cerrar" })).toBeVisible();
+    await expect(dialog.locator("canvas")).toBeVisible({ timeout: 15_000 });
+    await expect(loader).toHaveCount(0);
+  } finally {
+    await page.unroute(chunks);
+  }
 });
 
 test("el visor abre con canvas, sus botones responden y Cerrar vuelve con scroll y foco", async ({ page }) => {
@@ -102,10 +116,11 @@ test("el visor abre con canvas, sus botones responden y Cerrar vuelve con scroll
   await expect(page.getByRole("button", { name: "Recorrer el salón" })).toBeFocused();
 });
 
-test("Escape cierra el visor", async ({ page }) => {
+test("Escape cierra el visor y devuelve el foco a Recorrer el salón", async ({ page }) => {
   const dialog = await openTour(page);
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
+  await expect(page.getByRole("button", { name: "Recorrer el salón" })).toBeFocused();
 });
 
 // Review Focus 3
@@ -132,7 +147,6 @@ test("la vista Afuera dibuja menos de 150 draw calls", async ({ page }) => {
   await expect(canvas).toHaveCount(1);
   const drawCalls = Number(await canvas.getAttribute("data-draw-calls"));
   test.info().annotations.push({ type: "draw-calls", description: String(drawCalls) });
-  console.log(`draw calls (Afuera): ${drawCalls}`);
   expect(drawCalls).toBeGreaterThan(0);
   expect(drawCalls).toBeLessThan(150);
 });

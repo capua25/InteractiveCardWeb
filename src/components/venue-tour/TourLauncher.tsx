@@ -1,13 +1,10 @@
 "use client";
 
-import { Suspense, lazy, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useRef, useState } from "react";
 import type { TourSceneId, VenueTheme } from "@/domain/venue";
-import { TourLoader } from "./TourLoader";
-
-// El overlay usa APIs del navegador (WebGL, portal en body): solo se monta tras el toque.
-// Su chunk (y el de three, que llega con loadTourScene) baja recién al tocar el botón.
-const TourOverlay = lazy(() => import("./TourOverlay").then((m) => ({ default: m.TourOverlay })));
+// Import estático a propósito: con React.lazy un fallo del chunk del overlay rompía la tarjeta
+// entera. El overlay pesa pocos KB y no importa three (llega con el import() de loadTourScene).
+import { TourOverlay } from "./TourOverlay";
 
 type TourLauncherProps = { scene: TourSceneId; venueName: string; theme: VenueTheme };
 
@@ -30,12 +27,9 @@ export function TourLauncher({ scene, venueName, theme }: TourLauncherProps) {
       >
         Recorrer el salón
       </button>
-      {open ? (
-        // En portal para no quedar bajo un ancestro con transform (position: fixed se ata a él).
-        <Suspense fallback={createPortal(<TourLoader theme={theme} className="z-[60]" />, document.body)}>
-          <TourOverlay scene={scene} venueName={venueName} theme={theme} onClose={close} />
-        </Suspense>
-      ) : null}
+      {/* El overlay usa APIs del navegador (WebGL, portal en document.body): no debe renderizarse
+          en SSR. Por eso `open` arranca en false y solo se monta tras el toque. */}
+      {open ? <TourOverlay scene={scene} venueName={venueName} theme={theme} onClose={close} /> : null}
     </>
   );
 }

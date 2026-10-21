@@ -1,24 +1,15 @@
 "use client";
 
-import type { VenueTheme } from "@/domain/venue";
-import { themeToCssVars } from "@/lib/theme";
 import { useShouldAnimate } from "@/lib/use-should-animate";
 
-type TourLoaderProps = {
-  // Solo hace falta fuera del diálogo (la carga diferida): dentro ya hereda las variables.
-  theme?: VenueTheme;
-  className?: string;
-};
-
-// Mismo loader para la carga diferida del overlay y para la bajada de la escena:
-// ocupa el viewport entero y queda centrado, así no hay salto entre uno y otro.
-export function TourLoader({ theme, className = "" }: TourLoaderProps) {
+// Loader de la bajada de la escena (y de three), dentro del diálogo: hereda las variables del
+// tema y ocupa el viewport entero, centrado, debajo de la barra con Cerrar.
+export function TourLoader() {
   const spins = useShouldAnimate();
   return (
     <div
       data-testid="tour-loader"
-      style={theme ? themeToCssVars(theme) : undefined}
-      className={`fixed inset-0 flex items-center justify-center bg-neutral-900 text-white/80 ${className}`}
+      className="fixed inset-0 flex items-center justify-center bg-neutral-900 text-white/80"
     >
       <div role="status" aria-live="polite" className="flex flex-col items-center gap-4">
         <svg
