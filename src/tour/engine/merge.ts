@@ -2,18 +2,20 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 // Junta en un solo mesh los meshes estáticos de `group` que comparten material (un draw call por
-// material en vez de uno por pieza). Quedan aparte: instanciados, `noShadow`, transparentes,
-// multi-material, ocultos y el subárbol `skip` (p. ej. el techo, que se oculta por separado).
+// material en vez de uno por pieza). Los `noShadow` se juntan en baldes propios (el mesh resultante
+// conserva `noShadow`). Quedan aparte: instanciados, transparentes, multi-material, morph, ocultos,
+// el subárbol `skip` (p. ej. el techo, que se oculta por separado) y los subárboles `noMerge`.
 export function mergeByMaterial(group: THREE.Object3D, skip?: THREE.Object3D): void {
   group.updateMatrixWorld(true);
   const toLocal = group.matrixWorld.clone().invert();
   const buckets = new Map<string, THREE.Mesh[]>();
 
   const walk = (node: THREE.Object3D) => {
-    if (node === skip || !node.visible) return;
+    if (node === skip || !node.visible || node.userData.noMerge) return;
     const mesh = node as THREE.Mesh;
     if (mesh.isMesh && isMergeable(mesh)) {
-      const key = `${(mesh.material as THREE.Material).uuid}|${signature(mesh.geometry)}`;
+      const ns = mesh.userData.noShadow ? "|ns" : "";
+      const key = `${(mesh.material as THREE.Material).uuid}|${signature(mesh.geometry)}${ns}`;
       const list = buckets.get(key);
       if (list) list.push(mesh);
       else buckets.set(key, [mesh]);
@@ -33,6 +35,7 @@ export function mergeByMaterial(group: THREE.Object3D, skip?: THREE.Object3D): v
     if (!merged) continue;
     const mesh = new THREE.Mesh(merged, list[0].material);
     mesh.name = "merged";
+    if (list[0].userData.noShadow) mesh.userData.noShadow = true;
     for (const m of list) {
       m.removeFromParent();
       m.geometry.dispose();
@@ -45,7 +48,6 @@ function isMergeable(mesh: THREE.Mesh): boolean {
   const mat = mesh.material;
   return (
     !(mesh as THREE.InstancedMesh).isInstancedMesh &&
-    !mesh.userData.noShadow &&
     !Array.isArray(mat) &&
     !mat.transparent &&
     mat.opacity === 1 &&

@@ -59,6 +59,55 @@ describe("mergeByMaterial", () => {
     expect(meshes(skip)).toEqual([r1, r2]);
   });
 
+  it("junta los noShadow que comparten material en un mesh noShadow", () => {
+    const mat = new THREE.MeshStandardMaterial();
+    const root = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat);
+      m.userData.noShadow = true;
+      m.position.set(i * 2, 0, 0);
+      root.add(m);
+    }
+    mergeByMaterial(root);
+    expect(root.children).toHaveLength(1);
+    const merged = root.children[0] as THREE.Mesh;
+    expect(merged.name).toBe("merged");
+    expect(merged.userData.noShadow).toBe(true);
+  });
+
+  it("no mezcla noShadow con los que proyectan sombra", () => {
+    const mat = new THREE.MeshStandardMaterial();
+    const root = new THREE.Group();
+    for (let i = 0; i < 4; i++) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat);
+      if (i < 2) m.userData.noShadow = true;
+      m.position.set(i * 2, 0, 0);
+      root.add(m);
+    }
+    mergeByMaterial(root);
+    const ms = meshes(root);
+    expect(ms).toHaveLength(2);
+    expect(ms.filter((m) => m.userData.noShadow)).toHaveLength(1);
+    expect(ms.filter((m) => !m.userData.noShadow)).toHaveLength(1);
+  });
+
+  it("no toca el subárbol marcado noMerge", () => {
+    const mat = new THREE.MeshStandardMaterial();
+    const root = new THREE.Group();
+    const keep = new THREE.Group();
+    keep.userData.noMerge = true;
+    const inside = [0, 1].map(() => new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat));
+    keep.add(...inside);
+    const outside = [0, 1].map(() => new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat));
+    root.add(keep, ...outside);
+    mergeByMaterial(root);
+    expect(inside[0].parent).toBe(keep);
+    expect(inside[1].parent).toBe(keep);
+    expect(keep.children).toHaveLength(2);
+    expect(outside[0].parent).toBeNull();
+    expect(meshes(root).filter((m) => m.name === "merged")).toHaveLength(1);
+  });
+
   it("en la escena de Barbato's deja un mesh por material en root y en el techo", () => {
     const { root, roofGroup } = barbatosScene.build(createTestEngineContext());
     const before = meshes(root, roofGroup).filter(mergeable).length + meshes(roofGroup).filter(mergeable).length;
