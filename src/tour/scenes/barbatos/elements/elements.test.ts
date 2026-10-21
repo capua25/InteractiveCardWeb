@@ -45,9 +45,10 @@ describe("ELEMENTS de Barbato's", () => {
     ELEMENTS.find((e) => e.id === "chimney")!.build(ctx).traverse((o) => {
       if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh);
     });
+    const flue = meshes.filter((m) => m.material === ctx.materials("metal"));
+    expect(flue.length).toBeGreaterThan(0);
     expect(
-      meshes
-        .filter((m) => m.material === ctx.materials("metal"))
+      flue
         .every((m) => Math.abs(m.position.x - BARBATOS_LAYOUT.chimney.flue.x) < 1e-6),
     ).toBe(true);
   });

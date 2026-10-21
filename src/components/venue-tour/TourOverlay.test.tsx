@@ -1,5 +1,5 @@
 import { StrictMode } from "react";
-import { act, render, screen } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { TourOverlay } from "@/components/venue-tour/TourOverlay";
@@ -172,7 +172,8 @@ describe("TourOverlay", () => {
     renderOverlay();
     (document.activeElement as HTMLElement).blur();
     await screen.findByRole("button", { name: "Reintentar" });
-    expect(screen.getByRole("button", { name: "Cerrar" })).toHaveFocus();
+    // El foco pasa en un efecto pasivo: puede correr después de que aparezca Reintentar.
+    await waitFor(() => expect(screen.getByRole("button", { name: "Cerrar" })).toHaveFocus());
   });
 
   it("Escape llama a onClose", async () => {
