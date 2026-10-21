@@ -11,6 +11,9 @@ import { CARDS, treeCrowns } from "./vegetation";
 
 const ctx = { ...createTestEngineContext(), layout: BARBATOS_LAYOUT };
 
+// tope de la cúpula del sauce: 2.3 + 0.8 de radio vertical, con tarjetas a media altura del radio como mínimo
+const WILLOW_TOP = 2.3 + 0.8 * 0.4;
+
 describe("ELEMENTS de Barbato's", () => {
   it("los ids de ELEMENTS son únicos", () => {
     const ids = ELEMENTS.map((e) => e.id);
@@ -283,14 +286,14 @@ describe("ELEMENTS de Barbato's", () => {
     it.each(["high", "low"] as const)("tarjetas por especie (%s)", (detail) => {
       const C = CARDS[detail];
       const meshes = veg(detail);
-      // las cúpulas de los sauces usan la textura de hojas (van en el mesh de hojas); las faldas, la de hebras
-      const trees = v.saplings.length * C.sapling + v.tallSaplings.length * C.tall + v.wallRow.length * C.wallRow + v.poplars.length * C.poplar + v.willows.length * C.willowDome;
+      // el sauce entero (cúpula y falda) va con la textura de hebras; el resto de los árboles, con la de hojas
+      const trees = v.saplings.length * C.sapling + v.tallSaplings.length * C.tall + v.wallRow.length * C.wallRow + v.poplars.length * C.poplar;
       expect(cardsOf(byMaterial(meshes, "leaves")[0])).toBe(trees);
-      expect(cardsOf(byMaterial(meshes, "willow")[0])).toBe(v.willows.length * C.willowSkirt);
+      expect(cardsOf(byMaterial(meshes, "willow")[0])).toBe(v.willows.length * (C.willowDome + C.willowSkirt));
       expect(cardsOf(byMaterial(meshes, "photinia")[0])).toBe(C.photinia);
       expect(cardsOf(byMaterial(meshes, "phormium")[0])).toBe(v.phormiums.length * C.phormium);
     });
-    it.each([["high", 10], ["low", 6]] as const)("cada arbolito lleva entre 6 y 10 tarjetas (%s: %i), más en desktop", (detail, n) => {
+    it.each([["high", CARDS.high.sapling], ["low", CARDS.low.sapling]] as const)("cada arbolito lleva sus tarjetas (%s: %i) y desktop lleva más en total", (detail, n) => {
       const vs = worldVertices(byMaterial(veg(detail), "leaves")[0]);
       const centers = Array.from({ length: vs.length / 4 }, (_, c) => vs.slice(c * 4, c * 4 + 4).reduce((a, p) => a.add(p), new THREE.Vector3()).multiplyScalar(0.25));
       for (const s of v.saplings) {
@@ -336,14 +339,16 @@ describe("ELEMENTS de Barbato's", () => {
       expect(Math.min(...centers)).toBeGreaterThan(height / 3);
       expect(Math.max(...vs.map((p) => p.y))).toBeLessThan(height + 0.9);
     });
-    it("sauces: la falda de hebras cuelga hasta cerca del pasto y la cúpula va con tarjetas de hojas", () => {
+    it("sauces: un solo follaje de hebras, de la cúpula hasta cerca del pasto (sin tarjetas de hojas)", () => {
       const strands = worldVertices(byMaterial(veg(), "willow")[0]);
       for (const w of v.willows) {
         const ys = strands.filter((p) => Math.hypot(p.x - w.x, p.z - w.z) < 1.6).map((p) => p.y);
         expect(Math.min(...ys)).toBeLessThan(0.9);
         expect(Math.max(...ys)).toBeGreaterThan(2.3);
-        const dome = worldVertices(byMaterial(veg(), "leaves")[0]).filter((p) => Math.hypot(p.x - w.x, p.z - w.z) < 1.6 && p.y > 2);
-        expect(dome.length).toBeGreaterThan(0);
+        expect(Math.max(...ys)).toBeGreaterThan(WILLOW_TOP);
+        // ninguna tarjeta de hojas en el sauce (los álamos vecinos quedan a más de 1.5 m del centro)
+        const leaves = worldVertices(byMaterial(veg(), "leaves")[0]).filter((p) => Math.hypot(p.x - w.x, p.z - w.z) < 1.2);
+        expect(leaves).toHaveLength(0);
       }
     });
     it("cada árbol del layout conserva su posición: el tronco arranca en (x, 0, z)", () => {
@@ -396,10 +401,32 @@ describe("ELEMENTS de Barbato's", () => {
         }
       }
     });
-    it("los álamos (con jitter) quedan dentro del muro izquierdo", () => {
-      for (const p of v.poplars) expect(p.x - 0.7 * 1.15).toBeGreaterThan(-BARBATOS_LAYOUT.lot.halfWidth + BARBATOS_LAYOUT.lot.wallThickness / 2);
-      const wall = -BARBATOS_LAYOUT.lot.halfWidth + BARBATOS_LAYOUT.lot.wallThickness / 2;
-      for (const m of veg("high")) for (const p of worldVertices(m)) expect(p.x).toBeGreaterThan(wall);
+    it.each(["high", "low"] as const)("ningún follaje (%s) se mete en el muro izquierdo ni en el del fondo", (detail) => {
+      const { halfWidth, wallThickness, zBack } = BARBATOS_LAYOUT.lot;
+      for (const m of veg(detail)) {
+        for (const p of worldVertices(m)) {
+          expect(p.x).toBeGreaterThan(-halfWidth + wallThickness / 2);
+          expect(p.z).toBeGreaterThan(zBack + wallThickness / 2);
+        }
+      }
+    });
+    it.each(["high", "low"] as const)("álamos (%s): columnas anchas que se tocan con las vecinas, una cortina continua", (detail) => {
+      const leaves = worldVertices(byMaterial(veg(detail), "leaves")[0]);
+      const ps = v.poplars;
+      // follaje de cada álamo: alcance hacia el pasto en su propio tramo (±0.65 m en z, sin las vecinas) y extensión
+      // en z a media altura (1–3 m)
+      const extent = ps.map((p) => {
+        const strip = leaves.filter((q) => Math.abs(q.x - p.x) < 1.3 && Math.abs(q.z - p.z) < 0.65);
+        const mid = leaves.filter((q) => Math.abs(q.x - p.x) < 1.3 && Math.abs(q.z - p.z) < 1.9 && q.y > 1 && q.y < 3);
+        return { minZ: Math.min(...mid.map((q) => q.z)), maxZ: Math.max(...mid.map((q) => q.z)), maxX: Math.max(...strip.map((q) => q.x)) };
+      });
+      ps.forEach((p, i) => {
+        // hacia el pasto el follaje llega a ≥ 0.75 m del tronco en todo el tramo; hacia el muro no hay más
+        // lugar (1.1 m hasta la cara del muro)
+        expect(extent[i].maxX - p.x, `${p.z}`).toBeGreaterThan(0.75);
+        // el siguiente álamo (z decreciente) arranca antes de que termine este: sin hueco entre columnas
+        if (i < ps.length - 1) expect(extent[i + 1].maxZ, `${p.z}`).toBeGreaterThan(extent[i].minZ);
+      });
     });
     it("park ya no planta árboles", () => {
       const parkObj = ELEMENTS.find((e) => e.id === "park")!.build(ctx);

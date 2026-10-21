@@ -128,10 +128,11 @@ function leaf(g: CanvasRenderingContext2D, x: number, y: number, len: number, wi
 function leafClusters(seed: number, hue: number, sat: number, light: number, hueJitter: number): Draw {
   return (g, s) => {
     const R = rng(seed);
-    const clumps = Array.from({ length: 9 }, (_, i) => {
-      const a = (i / 9) * TAU + R() * 0.5;
-      const d = i === 0 ? 0 : s * (0.13 + R() * 0.12);
-      return { x: s / 2 + Math.cos(a) * d, y: s / 2 + Math.sin(a) * d, r: s * (0.1 + R() * 0.06) };
+    // racimos grandes y superpuestos: la mata se ve llena (cobertura ~60 %) con huecos chicos y borde dentado
+    const clumps = Array.from({ length: 13 }, (_, i) => {
+      const a = (i / 13) * TAU * 2 + R() * 0.5;
+      const d = i === 0 ? 0 : s * (i < 5 ? 0.12 : 0.24) * (0.8 + R() * 0.3);
+      return { x: s / 2 + Math.cos(a) * d, y: s / 2 + Math.sin(a) * d, r: s * (0.13 + R() * 0.06) };
     });
     // twigs: ramitas finas del centro a cada racimo
     g.strokeStyle = "#4a3a28";
@@ -142,7 +143,10 @@ function leafClusters(seed: number, hue: number, sat: number, light: number, hue
       g.lineTo(c.x, c.y);
       g.stroke();
     }
-    const perClump = 150;
+    // a 256 px (celulares) menos hojas pero más grandes: misma cobertura, ~1/3 menos trazos para generar
+    const small = s < 512;
+    const perClump = small ? 200 : 300;
+    const leafScale = small ? 1.22 : 1;
     for (let pass = 0; pass < 2; pass++) {
       for (const c of clumps) {
         for (let i = 0; i < perClump / 2; i++) {
@@ -150,10 +154,10 @@ function leafClusters(seed: number, hue: number, sat: number, light: number, hue
           const d = Math.sqrt(R()) * c.r * (pass ? 1.05 : 0.8);
           const x = c.x + Math.cos(a) * d, y = c.y + Math.sin(a) * d;
           const fromCenter = Math.hypot(x - s / 2, y - s / 2) / (s / 2);
-          if (fromCenter > 0.84) continue; // nada cerca del borde: la silueta de la tarjeta no se ve cuadrada
+          if (fromCenter > 0.9) continue; // nada cerca del borde: la silueta de la tarjeta no se ve cuadrada
           const up = 1 - y / s;
           const l = light + (pass ? 5 : -6) + fromCenter * 6 + up * 5 + (R() - 0.5) * 8;
-          const len = s * (0.035 + R() * 0.02);
+          const len = s * (0.04 + R() * 0.025) * leafScale;
           leaf(g, x, y, len, len * 0.5, a + (R() - 0.5) * 1.2, hsl(hue + (R() - 0.5) * hueJitter, sat + (R() - 0.5) * 12, l));
         }
       }
@@ -161,10 +165,11 @@ function leafClusters(seed: number, hue: number, sat: number, light: number, hue
   };
 }
 
-// Sauce: hebras largas que cuelgan desde arriba con hojas angostas a ambos lados.
+// Sauce: hebras largas y apretadas que cuelgan desde arriba con hojas angostas a ambos lados (la misma textura va en
+// la cúpula y en la falda: un solo follaje).
 const willow: Draw = (g, s) => {
   const R = rng(31);
-  const strands = 34;
+  const strands = 62;
   for (let i = 0; i < strands; i++) {
     let x = s * (0.04 + 0.92 * R());
     let y = s * R() * 0.12;
@@ -188,8 +193,8 @@ const willow: Draw = (g, s) => {
       const t = k / steps;
       for (const side of [-1, 1]) {
         const ang = Math.PI / 2 + side * (0.35 + R() * 0.35);
-        const len = s * (0.045 + R() * 0.02) * (1 - 0.4 * t);
-        leaf(g, px, py, len, len * 0.22, ang, hsl(78 + (R() - 0.5) * 14, 48 + R() * 14, l0 + (R() - 0.5) * 10 - t * 6));
+        const len = s * (0.05 + R() * 0.02) * (1 - 0.35 * t);
+        leaf(g, px, py, len, len * 0.26, ang, hsl(78 + (R() - 0.5) * 14, 48 + R() * 14, l0 + (R() - 0.5) * 10 - t * 6));
       }
     }
   }

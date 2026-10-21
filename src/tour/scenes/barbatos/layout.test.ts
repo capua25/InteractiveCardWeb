@@ -281,7 +281,7 @@ describe("layout de Barbato's con medidas reales", () => {
     expect(v.saplings.map((s) => [s.x, s.height])).toEqual([[-3, 2.5], [1.5, 2.2], [6, 3.0], [10.5, 2.4], [15, 2.8]]);
     for (const s of v.saplings) close(s.z, zb + 1.2);
     expect(v.wallRow.map((w) => w.x)).toEqual([-0.8, 3.8, 8.3, 12.8, 17.2]);
-    for (const w of v.wallRow) { close(w.z, zb + 0.8); expect([w.height, w.radius]).toEqual([3.2, 0.25]); }
+    for (const w of v.wallRow) { close(w.z, zb + 0.8); expect([w.height, w.radius]).toEqual([3.2, 0.5]); }
     expect(v.tallSaplings).toEqual([{ x: 5, z: -31, height: 6, radius: 1.2 }, { x: -8, z: -25, height: 5.5, radius: 1.2 }]);
     expect(v.poplars).toHaveLength(22);
     close(v.poplars[0].z, -14);
@@ -293,7 +293,7 @@ describe("layout de Barbato's con medidas reales", () => {
     close(v.phormiums[7].z, zb + 3);
     expect(v.phormiums.every((p) => Math.abs(p.x - (-19 + 2.2)) < 1e-9)).toBe(true);
     expect(v.willows.map((w) => [w.x, w.z, w.height])).toEqual(
-      [[-15.3, -32.8, 3.2], [-14.5, -39.5, 3.2], [-15.45, -37.25, 3.2], [-2.5, -38, 3.2]].map((r) => r.map((n) => expect.closeTo(n, 6))),
+      [[-15.3, -32.8, 3.2], [-14.5, -39.5, 3.2], [-15.25, -37.3, 3.2], [-2.5, -38, 3.2]].map((r) => r.map((n) => expect.closeTo(n, 6))),
     );
     expect(v.tallSaplings.map((t) => [t.x, t.z, t.height])).toEqual([[5, -31, 6], [-8, -25, 5.5]].map((r) => r.map((n) => expect.closeTo(n, 6))));
     close(v.photinia.x, 16.5);
@@ -304,7 +304,10 @@ describe("layout de Barbato's con medidas reales", () => {
   });
   it("la vegetación respeta lote, edificio y arena", () => expectParkClear(L0));
   it("los sauces no pisan la columna de álamos", () => {
-    const poplarR = treeCrowns(L0).find((c) => c.radius === 0.7 * 1.15)!.radius;
+    const p0 = L0.vegetation.poplars[0];
+    const poplarR = treeCrowns(L0).find((c) => c.x === p0.x && c.z === p0.z)!.radius;
+    // columnas anchas: ~0.94 m de radio (se tocan con las vecinas, a 1.3 m)
+    expect(poplarR).toBeGreaterThan(0.9);
     for (const w of L0.vegetation.willows) {
       const willowR = treeCrowns(L0).find((c) => c.x === w.x && c.z === w.z)!.radius;
       for (const p of L0.vegetation.poplars) expect(Math.hypot(w.x - p.x, w.z - p.z), `sauce ${w.x},${w.z}`).toBeGreaterThanOrEqual(willowR + poplarR);
