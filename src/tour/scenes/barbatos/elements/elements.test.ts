@@ -120,10 +120,13 @@ describe("ELEMENTS de Barbato's", () => {
     };
     const walls = () => parkMeshes().filter((m) => m.material === ctx.materials("wallLow"));
 
-    it("park levanta los 4 muros de 1.75 con la entrada abierta", () => {
+    it("park levanta los 4 muros (2 m lados y fondo, 1.5 m frente) con la entrada abierta", () => {
       const w = walls();
       expect(w).toHaveLength(5);
-      for (const m of w) expect(bbox(m).getSize(new THREE.Vector3()).y).toBeCloseTo(1.75, 5);
+      for (const m of w) {
+        const isFront = Math.abs(m.position.z - l.zFront) < 1e-6;
+        expect(bbox(m).getSize(new THREE.Vector3()).y).toBeCloseTo(isFront ? 1.5 : 2, 5);
+      }
       const sides = w.filter((m) => Math.abs(Math.abs(m.position.x) - l.halfWidth) < 1e-6);
       expect(sides).toHaveLength(2);
       for (const m of sides) expect(bbox(m).getSize(new THREE.Vector3()).z).toBeCloseTo(60, 5);

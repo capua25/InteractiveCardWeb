@@ -81,7 +81,7 @@ describe("layout de Barbato's con medidas reales", () => {
   });
   it("el anexo llega al borde del techo de la galería", () => { expect(L0.annex.zBack).toBe(L0.gallery.zRoofOuter); });
   it("lote de 60×38 anclado a la galería", () => {
-    expect(L0.lot).toMatchObject({ zBack: expect.closeTo(-42.35, 4), zFront: expect.closeTo(17.65, 4), halfWidth: 19, centerZ: expect.closeTo(-12.35, 4), wallHeight: 1.75, wallThickness: 0.2 });
+    expect(L0.lot).toMatchObject({ zBack: expect.closeTo(-42.35, 4), zFront: expect.closeTo(17.65, 4), halfWidth: 19, centerZ: expect.closeTo(-12.35, 4), wallHeight: 2, frontWallHeight: 1.5, wallThickness: 0.2 });
     close(L0.lot.zBack, L0.gallery.zRoofOuter - 32);
     close(L0.lot.zFront - L0.lot.zBack, 60);
     close(L0.lot.zFront - L0.hall.hz, 12.65);

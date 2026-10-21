@@ -51,6 +51,7 @@ export type BarbatosLayout = {
     halfWidth: number;
     centerZ: number;
     wallHeight: number;
+    frontWallHeight: number;
     wallThickness: number;
     entrance: Segment;
     frontSegments: Segment[];
@@ -246,6 +247,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     halfWidth,
     centerZ: zBack + lt.length / 2,
     wallHeight: lt.wallHeight,
+    frontWallHeight: lt.frontWallHeight,
     wallThickness: lt.wallThickness,
     entrance: { x0: entranceX - lt.entrance.width / 2, x1: entranceX + lt.entrance.width / 2 },
     frontSegments: plinthSegments(-halfWidth, halfWidth, [{ x: entranceX, width: lt.entrance.width }]),

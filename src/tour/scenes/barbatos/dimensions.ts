@@ -99,7 +99,8 @@ export type BarbatosDimensions = {
     length: number;
     width: number;
     backWallFromGallery: number;
-    wallHeight: number;
+    wallHeight: number; // laterales y fondo
+    frontWallHeight: number;
     wallThickness: number;
     entrance: { width: number; centerFromAnnex: number };
     marginX: number;
@@ -186,7 +187,8 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
     length: 60,
     width: 38,
     backWallFromGallery: 32,
-    wallHeight: 1.75,
+    wallHeight: 2,
+    frontWallHeight: 1.5,
     wallThickness: 0.2,
     entrance: { width: 4.5, centerFromAnnex: 0 },
     marginX: 4,

@@ -10,11 +10,11 @@ const BAND = { height: 0.1, proud: 0.02, ys: [0.4, 0.85, 1.3] };
 export const park: SceneElement<BarbatosLayout> = {
   id: "park",
   build({ layout: l, primitives: P, materials }) {
-    const { zBack, zFront, halfWidth: hw, wallHeight: h, wallThickness: t, entrance, frontSegments } = l.lot;
+    const { zBack, zFront, halfWidth: hw, wallHeight: h, frontWallHeight: fh, wallThickness: t, entrance, frontSegments } = l.lot;
     const g = new THREE.Group();
     g.add(P.box(2 * hw + t, h, t, "wallLow", [0, h / 2, zBack]));
     for (const sx of [-1, 1]) g.add(P.box(t, h, zFront - zBack, "wallLow", [sx * hw, h / 2, (zBack + zFront) / 2]));
-    for (const s of frontSegments) g.add(P.box(s.x1 - s.x0, h, t, "wallLow", [(s.x0 + s.x1) / 2, h / 2, zFront]));
+    for (const s of frontSegments) g.add(P.box(s.x1 - s.x0, fh, t, "wallLow", [(s.x0 + s.x1) / 2, fh / 2, zFront]));
     // pilares junto a la entrada: piedra gris oscura con hiladas de ladrillo (material plaster, terracota)
     for (const x of [entrance.x0 - PILLAR.size / 2, entrance.x1 + PILLAR.size / 2]) {
       g.add(P.box(PILLAR.size, PILLAR.height, PILLAR.size, "stone", [x, PILLAR.height / 2, zFront]));
