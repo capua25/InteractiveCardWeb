@@ -5,7 +5,7 @@ import type { SceneElement } from "@/tour/types";
 import type { BarbatosLayout } from "../layout";
 
 const CROWN_RADIUS_RATIO = 0.25; // radio de la copa de fondo respecto de su altura
-const POPLAR = { radius: 0.9, lift: 0.3 };
+const POPLAR = { radius: 0.9, lift: 0.3, seed: 5, jitter: 0.15 };
 const CONIFER = { radius: 1.8, lift: 1 };
 const SAPLING = { trunkRadius: 0.06, trunkRatio: 0.55, crownRadius: 0.28, crownY: 0.72 };
 const WILLOW = { trunkRadius: 0.18, trunkHeight: 2.2, crown: { rx: 2.4, ry: 1.4, y: 4.3 }, skirt: { y: 0.9, height: 3.3, scale: 1.4 } };
@@ -43,8 +43,9 @@ class Batch {
   private readonly m = new THREE.Matrix4();
   private readonly list: THREE.Matrix4[] = [];
   constructor(private readonly geo: THREE.BufferGeometry) {}
-  add(x: number, y: number, z: number, [sx, sy, sz]: Scale3) {
-    this.list.push(this.m.compose(new THREE.Vector3(x, y, z), new THREE.Quaternion(), new THREE.Vector3(sx, sy, sz)).clone());
+  add(x: number, y: number, z: number, [sx, sy, sz]: Scale3, yaw = 0) {
+    const q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    this.list.push(this.m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(sx, sy, sz)).clone());
   }
   mesh(material: THREE.Material): THREE.InstancedMesh {
     const mesh = new THREE.InstancedMesh(this.geo, material, this.list.length);
@@ -76,7 +77,12 @@ export const vegetation: SceneElement<BarbatosLayout> = {
       const r = s.height * SAPLING.crownRadius;
       lightCrowns.add(s.x, s.height * SAPLING.crownY, s.z, [r, r, r]);
     }
-    for (const p of v.poplars) darkCones.add(p.x, POPLAR.lift, p.z, [POPLAR.radius, p.height, POPLAR.radius]);
+    const J = rng(POPLAR.seed);
+    for (const p of v.poplars) {
+      const w = POPLAR.radius * (1 - POPLAR.jitter + 2 * POPLAR.jitter * J());
+      const h = p.height * (1 - POPLAR.jitter + 2 * POPLAR.jitter * J());
+      darkCones.add(p.x, POPLAR.lift, p.z, [w, h, w], J() * Math.PI * 2);
+    }
 
     for (const w of v.willows) {
       trunks.add(w.x, 0, w.z, [WILLOW.trunkRadius, WILLOW.trunkHeight, WILLOW.trunkRadius]);
@@ -116,7 +122,11 @@ export const vegetation: SceneElement<BarbatosLayout> = {
       return blob.clone().applyMatrix4(m);
     });
     const merged = mergeGeometries(parts, false);
-    if (merged) g.add(new THREE.Mesh(merged, materials("crownDark")));
+    if (merged) {
+      const bg = new THREE.Mesh(merged, materials("crownDark"));
+      bg.userData.noShadow = true; // fuera del lote: sin sombras sobre el parque ni recibir las del muro
+      g.add(bg);
+    }
     return g;
   },
 };

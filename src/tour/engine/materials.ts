@@ -50,7 +50,7 @@ export function createMaterials(
     canvas: { color: "#141414", roughness: 1, side: THREE.DoubleSide },
     sand: { color: "#c2ab8d", roughness: 1 },
     crownLight: { color: "#7f9a45", roughness: 1, flatShading: true },
-    crownDark: { color: "#26361f", roughness: 1, flatShading: true },
+    crownDark: { color: "#4f7a38", roughness: 1, flatShading: true },
     photinia: { color: "#8a2a22", roughness: 1, flatShading: true },
     phormium: { color: "#7a2a2a", roughness: 0.9, flatShading: true },
     lavender: { color: "#4a5a2a", roughness: 1, flatShading: true },

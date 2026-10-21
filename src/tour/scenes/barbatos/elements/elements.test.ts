@@ -239,8 +239,9 @@ describe("ELEMENTS de Barbato's", () => {
         const inZ = t.z - t.radius < lot.zFront && t.z + t.radius > lot.zBack;
         expect(inX && inZ, `árbol ${t.x},${t.z} r${t.radius}`).toBe(false);
       }
-      const bg = veg().find((m) => m.material === ctx.materials("crownDark") && m.geometry.boundingBox === null && !(m as THREE.InstancedMesh).isInstancedMesh)!;
+      const bg = veg().find((m) => m.material === ctx.materials("crownDark") && !(m as THREE.InstancedMesh).isInstancedMesh)!;
       expect(bg).toBeDefined();
+      expect(bg.userData.noShadow).toBe(true);
       const pos = bg.geometry.getAttribute("position");
       for (let i = 0; i < pos.count; i++) {
         const inLot = Math.abs(pos.getX(i)) < lot.halfWidth && pos.getZ(i) > lot.zBack;

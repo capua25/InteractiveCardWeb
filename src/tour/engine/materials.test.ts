@@ -52,7 +52,7 @@ describe("materials", () => {
 
   it("los materiales nuevos tienen los colores de las fotos", () => {
     const hex: Record<string, string> = {
-      crownLight: "7f9a45", crownDark: "26361f", sand: "c2ab8d",
+      crownLight: "7f9a45", crownDark: "4f7a38", sand: "c2ab8d",
       greyStucco: "82837b", frameGray: "8a8f86", frostedGlass: "4d5a58",
       photinia: "8a2a22",
     };
