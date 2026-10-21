@@ -34,7 +34,13 @@ export type Primitives = {
     w: number,
     h: number,
     wallThickness: number,
-    opts?: { door?: boolean; cols?: number; rows?: number },
+    opts?: {
+      door?: boolean;
+      cols?: number;
+      rows?: number;
+      frameKey?: MaterialKey;
+      glassKey?: MaterialKey;
+    },
   ): THREE.Group;
 };
 
@@ -51,7 +57,15 @@ export function createPrimitives(M: MaterialFactory): Primitives {
   };
 
   const cyl: Primitives["cyl"] = (r, h, key, at, segments = 16) => {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, segments), M(key));
+    const geo = new THREE.CylinderGeometry(r, r, h, segments);
+    const unit = UNIT[key];
+    if (unit) {
+      const uv = geo.attributes.uv;
+      for (let i = 0; i < uv.count; i++) {
+        uv.setXY(i, (uv.getX(i) * 2 * Math.PI * r) / unit, (uv.getY(i) * h) / unit);
+      }
+    }
+    const m = new THREE.Mesh(geo, M(key));
     m.position.set(at[0], at[1], at[2]);
     return m;
   };
@@ -80,7 +94,9 @@ export function createPrimitives(M: MaterialFactory): Primitives {
     const ft = 0.07;
     const fd = wallThickness + 0.06;
     const group = new THREE.Group();
-    const put = (a: number, y: number, sa: number, sy: number, key: MaterialKey = "metal", depth = fd) => {
+    const frameKey = opts.frameKey ?? "metal";
+    const glassKey = opts.glassKey ?? "glass";
+    const put = (a: number, y: number, sa: number, sy: number, key: MaterialKey = frameKey, depth = fd) => {
       group.add(
         axis === "z"
           ? box(sa, sy, depth, key, [a, y, wallMid])
@@ -94,14 +110,18 @@ export function createPrimitives(M: MaterialFactory): Primitives {
     if (!opts.door) put(c, y0 + ft / 2, w, ft); // alféizar
     if (opts.door) {
       put(c, yc, ft, h); // parante central (puerta doble)
-      put(c, y0 + 1.0, w, 0.05, "metal", 0.1); // barral
+      if (opts.rows && opts.rows > 1) {
+        for (let k = 1; k < opts.rows; k++) put(c, y0 + (k * h) / opts.rows, w, 0.04, frameKey, 0.06);
+      } else {
+        put(c, y0 + 1.0, w, 0.05, frameKey, 0.1); // barral
+      }
     } else {
       const cols = opts.cols || 3;
       const rows = opts.rows || 3; // cuadrícula
-      for (let k = 1; k < cols; k++) put(c - w / 2 + (k * w) / cols, yc, 0.04, h, "metal", 0.06);
-      for (let k = 1; k < rows; k++) put(c, y0 + (k * h) / rows, w, 0.04, "metal", 0.06);
+      for (let k = 1; k < cols; k++) put(c - w / 2 + (k * w) / cols, yc, 0.04, h, frameKey, 0.06);
+      for (let k = 1; k < rows; k++) put(c, y0 + (k * h) / rows, w, 0.04, frameKey, 0.06);
     }
-    put(c, yc, w - 2 * ft, h - (opts.door ? ft : 2 * ft), "glass", 0.02);
+    put(c, yc, w - 2 * ft, h - (opts.door ? ft : 2 * ft), glassKey, 0.02);
     return group;
   };
 
