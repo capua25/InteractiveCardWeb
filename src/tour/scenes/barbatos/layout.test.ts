@@ -126,17 +126,29 @@ describe("layout de Barbato's con medidas reales", () => {
   it("salón y aberturas del frente", () => {
     expect(L0.hall).toMatchObject({ hx: 9, hz: 5, wallHeight: 3.5, ridgeHeight: 6.4, wallThickness: 0.3 });
     close(L0.hall.slope, Math.atan2(2.9, 5));
-    expect(L0.frontDoor).toEqual({ x: -1.5, width: 2.3, height: 2.7, sill: 0, rows: 4 });
+    expect(L0.frontDoor).toEqual({ x: -3, width: 2.6, height: 2.7, sill: 0, rows: 4 });
     const xs = L0.frontWindows.map((w) => w.x);
-    [-5.5, 1.85, 4.45, 7.05].forEach((x, i) => close(xs[i], x));
-    close(9 - (xs[3] + 0.75), 1.2);
+    [-7.6, 1.65, 4.6, 7.55].forEach((x, i) => close(xs[i], x));
+    close(9 - (xs[3] + 0.8), 0.65);
     expect(L0.frontSconces).toEqual([
-      { x: -3.25, y: 2.9 },
-      { x: 0.25, y: 2.9 },
-      { x: -8.2, y: 2.6 },
-      { x: expect.closeTo(3.15, 4), y: 2.6 },
-      { x: expect.closeTo(5.75, 4), y: 2.6 },
+      { x: expect.closeTo(-5.57, 4), y: 2.4 },
+      { x: expect.closeTo(-0.43, 4), y: 2.4 },
+      { x: expect.closeTo(3.125, 4), y: 2.4 },
+      { x: expect.closeTo(6.075, 4), y: 2.4 },
     ]);
+  });
+  it("cada aplique del frente queda en el punto medio del paño entre dos aberturas vecinas", () => {
+    const openings = [L0.frontDoor, ...L0.frontWindows].sort((a, b) => a.x - b.x);
+    const mids = openings.slice(1).map((o, i) => {
+      const prev = openings[i];
+      return (prev.x + prev.width / 2 + o.x - o.width / 2) / 2;
+    });
+    const xs = L0.frontSconces.map((s) => s.x).sort((a, b) => a - b);
+    expect(xs).toHaveLength(4);
+    // ninguno fuera de las ventanas extremas
+    expect(xs[0]).toBeGreaterThan(L0.frontWindows[0].x);
+    expect(xs[3]).toBeLessThan(L0.frontWindows[3].x);
+    for (const x of xs) expect(Math.min(...mids.map((m) => Math.abs(m - x)))).toBeLessThan(0.06);
   });
   it("las ventanas del frente quedan 1 a la izquierda y 3 a la derecha de la puerta", () => {
     expect(L0.frontWindows.filter((w) => w.x < L0.frontDoor.x)).toHaveLength(1);
@@ -155,13 +167,13 @@ describe("layout de Barbato's con medidas reales", () => {
   });
   it("zócalo cortado en puerta y ventanales", () => {
     expect(L0.plinth.front).toHaveLength(2);
-    expect(L0.plinth.front[0].x1).toBeCloseTo(-1.5 - 1.15, 4);
-    expect(L0.plinth.front[1].x0).toBeCloseTo(-1.5 + 1.15, 4);
+    expect(L0.plinth.front[0].x1).toBeCloseTo(-3 - 1.3, 4);
+    expect(L0.plinth.front[1].x0).toBeCloseTo(-3 + 1.3, 4);
     expect(L0.plinth.back).toHaveLength(4);
   });
   it("hastial derecho, cerchas, chimenea, alfombra", () => {
     expect(L0.gableWindows.map((g) => g.z)).toEqual([-3.2, 3.2]);
-    expect(L0.gableWindows.every((g) => g.height === 1.75 && g.sill === 1.05)).toBe(true);
+    expect(L0.gableWindows.every((g) => g.height === 1.75 && g.sill === 0.9)).toBe(true);
     expect(L0.trussesX).toEqual([-7.2, -3.6, 0, 3.6, 7.2]);
     close(L0.chimney.x, 8.1);
     close(L0.chimney.hearthX, 7.48);
@@ -199,7 +211,7 @@ describe("layout de Barbato's con medidas reales", () => {
   });
   it("anexo, pérgola y galería", () => {
     expect(L0.annex).toMatchObject({ x: -12, width: 6, height: expect.closeTo(3.85, 4), zFront: expect.closeTo(5.06, 4), zBack: expect.closeTo(-10.35, 4) });
-    expect(L0.pergola).toEqual({ z: 8, height: 3.4, columnsX: [expect.closeTo(-4.3, 4), expect.closeTo(1.3, 4)] });
+    expect(L0.pergola).toEqual({ z: 8, height: 3.4, columnsX: [expect.closeTo(-5.8, 4), expect.closeTo(-0.2, 4)] });
     expect(L0.gallery).toMatchObject({ zInner: -5, zPosts: expect.closeTo(-10.1, 4), zRoofOuter: expect.closeTo(-10.35, 4), postHeight: 3.3, fasciaHeight: 0.3, postsX: [-6, -3, 0, 3, 6, 9] });
   });
   it("6 tramos de cortina cubren la galería sin huecos", () => {
@@ -261,7 +273,7 @@ describe("layout de Barbato's con medidas reales", () => {
   it("parque, patio, mesas y luces", () => {
     expect("trees" in L0.park).toBe(false);
     expect(L0.tables.slice(0, 4).map((t) => [t.z, t.kind])).toEqual([[2.4, "round"], [-2.4, "rect"], [2.4, "rect"], [-2.4, "round"]]);
-    expect(L0.pointLights).toEqual([[expect.closeTo(-1.5, 4), 2.6, 5.8], [-4, 3.2, 0], [4, 3.2, 0], [expect.closeTo(7.2, 4), 0.9, 0], [0, 2.6, -7]]);
+    expect(L0.pointLights).toEqual([[expect.closeTo(-3, 4), 2.6, 5.8], [-4, 3.2, 0], [4, 3.2, 0], [expect.closeTo(7.2, 4), 0.9, 0], [0, 2.6, -7]]);
   });
   it("vegetación: plantines, álamos, formios, sauces, conífera y fotinia en coordenadas absolutas", () => {
     const v = L0.vegetation;
@@ -356,8 +368,8 @@ describe("anclaje: los elementos se mueven con su pared", () => {
   });
   it("alargar L conserva la distancia de cada ventana del frente a su esquina", () => {
     const L30 = withHall({ length: 30 });
-    close(L30.frontWindows[0].x - -L30.hall.hx, 3.5);
-    expect(L30.frontWindows.slice(1).map((w) => L30.hall.hx - w.x)).toEqual([7.15, 4.55, 1.95].map((v) => expect.closeTo(v, 4)));
+    close(L30.frontWindows[0].x - -L30.hall.hx, 1.4);
+    expect(L30.frontWindows.slice(1).map((w) => L30.hall.hx - w.x)).toEqual([7.35, 4.4, 1.45].map((v) => expect.closeTo(v, 4)));
     close(L30.backWindows[0].x - L30.backWindows[0].width / 2, -L30.hall.hx + 1.95);
   });
   it("ensanchar W corre pérgola, anexo y galería, y el anexo sigue llegando al techo de la galería", () => {
@@ -389,7 +401,7 @@ describe("medidas editables sin ventana a la izquierda de la puerta", () => {
     d.frontWindows.centers = d.frontWindows.centers.filter((c) => c.from !== "front-left");
     const L = computeLayout(d);
     expect(L.frontWindows).toHaveLength(3);
-    expect(L.frontSconces.slice(0, 2)).toEqual([{ x: -3.25, y: 2.9 }, { x: 0.25, y: 2.9 }]);
+    expect(L.frontSconces.slice(0, 2)).toEqual([{ x: expect.closeTo(-5.57, 4), y: 2.4 }, { x: expect.closeTo(-0.43, 4), y: 2.4 }]);
     expect(L.frontSconces).toHaveLength(4);
   });
 });
