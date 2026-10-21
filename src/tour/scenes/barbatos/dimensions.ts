@@ -10,8 +10,8 @@ export const ROOF_COLOR = "#6b6e75";
 export type BarbatosDimensions = {
   // Salón: largo en x, ancho en z.
   hall: { length: number; width: number; wallHeight: number; ridgeHeight: number; wallThickness: number };
-  // Puerta centrada en el frente.
-  frontDoor: { width: number; height: number };
+  // Puerta a `fromLeft` de la esquina frente-izquierda (centro de la puerta).
+  frontDoor: { width: number; height: number; fromLeft: number; rows: number };
   // Ventanas del frente: centro a `offset` de la esquina indicada.
   frontWindows: {
     width: number;
@@ -51,18 +51,18 @@ export type BarbatosDimensions = {
   // Desde el muro izquierdo interior hasta `frontGap` antes del frente de la chimenea.
   carpet: { width: number; fromLeftWall: number; chimneyGap: number };
   // A la izquierda del salón.
-  annex: { width: number; height: number; setbackFromFront: number };
+  annex: { width: number; heightRatio: number; setbackFromFront: number };
   // Desde el frente.
   pergola: { distanceFromFront: number; height: number; columnsFromAxis: number };
   // Desde el fondo.
   gallery: {
     depth: number;
-    roofDepth: number;
     roofOverhang: number;
     postInset: number;
     postSpacing: number;
     postCount: number; // postes desde la esquina izquierda, sin contar la esquina
     postHeight: number;
+    fasciaHeight: number;
   };
   park: {
     wallHeight: number;
@@ -90,17 +90,17 @@ export type BarbatosDimensions = {
 };
 
 export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
-  hall: { length: 24, width: 12, wallHeight: 3.5, ridgeHeight: 7, wallThickness: 0.3 },
-  frontDoor: { width: 2.5, height: 2.7 },
+  hall: { length: 18, width: 10, wallHeight: 3.5, ridgeHeight: 6.4, wallThickness: 0.3 },
+  frontDoor: { width: 2.3, height: 2.7, fromLeft: 7.5, rows: 4 },
   frontWindows: {
-    width: 1.7,
-    height: 1.7,
-    sill: 1.2,
+    width: 1.5,
+    height: 1.75,
+    sill: 1.05,
     centers: [
-      { from: "front-left", offset: 6.5 },
-      { from: "front-right", offset: 8 },
-      { from: "front-right", offset: 5 },
-      { from: "front-right", offset: 2 },
+      { from: "front-left", offset: 3.5 },
+      { from: "front-right", offset: 7.15 },
+      { from: "front-right", offset: 4.55 },
+      { from: "front-right", offset: 1.95 },
     ],
   },
   frontSconces: { doorGap: 0.6, doorHeight: 2.9, windowHeight: 2.6, leftOfLeftWindow: 2.7 },
@@ -114,20 +114,20 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
     sconceOutside: 0.5,
     sconceHeight: 2.6,
   },
-  gableWindows: { width: 1.4, offsetFromAxis: 3.8 },
-  plinth: { height: 0.8, thickness: 0.42, overhang: 0.06 },
-  trusses: { count: 5, spacing: 4 },
+  gableWindows: { width: 1.4, offsetFromAxis: 3.2 },
+  plinth: { height: 0.6, thickness: 0.42, overhang: 0.06 },
+  trusses: { count: 5, spacing: 3.6 },
   chimney: {
     depth: 1.2,
-    height: 5.8,
+    height: 5.2,
     width: 2.8,
     hearthFromInnerWall: 1.22,
     flue: { radius: 0.32, base: 5.6, aboveRidge: 1.8 },
   },
   carpet: { width: 1.8, fromLeftWall: 0.2, chimneyGap: 0.3 },
-  annex: { width: 6, height: 3.2, setbackFromFront: 2 },
+  annex: { width: 6, heightRatio: 1.1, setbackFromFront: 0 },
   pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.4 },
-  gallery: { depth: 3, roofDepth: 3.4, roofOverhang: 0.35, postInset: 0.1, postSpacing: 4, postCount: 6, postHeight: 3 },
+  gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3 },
   park: {
     wallHeight: 1.1,
     wallDistanceFromBack: 20,
@@ -146,7 +146,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
     ],
   },
   patio: { width: 30, depth: 10, xOffset: -2 },
-  tables: { rowsFromLeftWall: [3, 6.5, 10, 13.5, 17], fromLongWall: 2.6 },
+  tables: { rowsFromLeftWall: [2.5, 5.5, 8.5, 11.5, 14.5], fromLongWall: 2.6 },
   pointLights: {
     frontAhead: 0.8,
     side: [

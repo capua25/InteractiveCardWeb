@@ -3,7 +3,7 @@ import { BARBATOS_DIMENSIONS, type BarbatosDimensions } from "./dimensions";
 
 export type { Bounds, Vec3 };
 
-export type Opening = { x: number; width: number; height: number; sill: number };
+export type Opening = { x: number; width: number; height: number; sill: number; rows?: number };
 export type Segment = { x0: number; x1: number };
 export type TableSpot = { x: number; z: number; kind: "round" | "rect" };
 
@@ -38,7 +38,7 @@ export type BarbatosLayout = {
   carpet: { x0: number; x1: number; width: number };
   annex: { x: number; width: number; height: number; zFront: number; zBack: number };
   pergola: { z: number; height: number; columnsX: number[] };
-  gallery: { zInner: number; zPosts: number; zRoofOuter: number; depth: number; postHeight: number; postsX: number[] };
+  gallery: { zInner: number; zPosts: number; zRoofOuter: number; depth: number; postHeight: number; fasciaHeight: number; postsX: number[] };
   park: {
     wall: { zStart: number; z: number; halfWidth: number; height: number };
     trees: { x: number; z: number; scale: number }[];
@@ -83,8 +83,14 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     slopeLen: Math.hypot(hz, rise),
   };
 
-  // Frente (+z): puerta centrada; ventanas a offsets de la esquina frente-izquierda / frente-derecha.
-  const frontDoor: Opening = { x: 0, width: d.frontDoor.width, height: d.frontDoor.height, sill: 0 };
+  // Frente (+z): puerta a fromLeft de la esquina frente-izquierda; ventanas a offsets de la esquina frente-izquierda / frente-derecha.
+  const frontDoor: Opening = {
+    x: -hx + d.frontDoor.fromLeft,
+    width: d.frontDoor.width,
+    height: d.frontDoor.height,
+    sill: 0,
+    rows: d.frontDoor.rows,
+  };
   const fw = d.frontWindows;
   const frontWindows: Opening[] = fw.centers.map((c) => ({
     x: c.from === "front-left" ? -hx + c.offset : hx - c.offset,
@@ -96,8 +102,8 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   const rightWin = frontWindows.filter((w) => w.x > frontDoor.x);
   const doorSconceX = frontDoor.width / 2 + d.frontSconces.doorGap;
   const frontSconces = [
-    { x: -doorSconceX, y: d.frontSconces.doorHeight },
-    { x: doorSconceX, y: d.frontSconces.doorHeight },
+    { x: frontDoor.x - doorSconceX, y: d.frontSconces.doorHeight },
+    { x: frontDoor.x + doorSconceX, y: d.frontSconces.doorHeight },
     // a la izquierda de la ventana izquierda (si las medidas no traen ninguna, no hay aplique)
     ...leftWin.slice(0, 1).map((w) => ({ x: w.x - d.frontSconces.leftOfLeftWindow, y: d.frontSconces.windowHeight })),
     // en el punto medio entre ventanas derechas consecutivas
@@ -175,6 +181,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     zRoofOuter: -hz - g.depth - g.roofOverhang,
     depth: g.depth,
     postHeight: g.postHeight,
+    fasciaHeight: g.fasciaHeight,
     postsX: Array.from({ length: g.postCount }, (_, i) => -hx + (i + 1) * g.postSpacing),
   };
 
@@ -182,8 +189,8 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   const annex = {
     x: -hx - d.annex.width / 2,
     width: d.annex.width,
-    height: d.annex.height,
-    zFront: hz - d.annex.setbackFromFront,
+    height: d.annex.heightRatio * d.hall.wallHeight,
+    zFront: hz + d.plinth.overhang - d.annex.setbackFromFront,
     zBack: gallery.zRoofOuter,
   };
 
@@ -191,13 +198,13 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
   const pergola = {
     z: hz + d.pergola.distanceFromFront,
     height: d.pergola.height,
-    columnsX: [-d.pergola.columnsFromAxis, d.pergola.columnsFromAxis],
+    columnsX: [frontDoor.x - d.pergola.columnsFromAxis, frontDoor.x + d.pergola.columnsFromAxis],
   };
 
   // Parque: muros laterales arrancan en el borde del techo de la galería; fondo, guirnalda y árboles desde el fondo/frente.
   const pk = d.park;
   const parkWall = {
-    zStart: -hz - g.roofDepth,
+    zStart: gallery.zRoofOuter,
     z: -hz - pk.wallDistanceFromBack,
     halfWidth: pk.wallHalfWidth,
     height: pk.wallHeight,

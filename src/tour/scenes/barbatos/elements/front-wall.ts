@@ -24,7 +24,7 @@ export const frontWall: SceneElement<BarbatosLayout> = {
     wall.position.z = hz - T;
     g.add(wall);
     for (const w of l.frontWindows) g.add(P.frame("z", w.x, hz - T / 2, w.sill, w.width, w.height, T));
-    g.add(P.frame("z", d.x, hz - T / 2, d.sill, d.width, d.height, T, { door: true }));
+    g.add(P.frame("z", d.x, hz - T / 2, d.sill, d.width, d.height, T, { door: true, rows: d.rows }));
     for (const sc of l.frontSconces) g.add(P.box(0.18, 0.28, 0.12, "sconce", [sc.x, sc.y, hz + 0.06], { noShadow: true }));
     return g;
   },

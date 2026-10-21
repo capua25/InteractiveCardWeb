@@ -4,7 +4,7 @@ import { clampTarget, resolveViewPose } from "./camera";
 
 describe("camera", () => {
   it("Afuera en pantalla angosta se aleja ×1,5 desde el target", () => {
-    expect(resolveViewPose(BARBATOS_VIEWS, "out", 0.5).pos).toEqual([29, 13.75, 34.5]);
+    expect(resolveViewPose(BARBATOS_VIEWS, "out", 0.5).pos).toEqual([23.25, 13.25, 25.25].map((v) => expect.closeTo(v, 6)));
   });
   it("Afuera en pantalla ancha y Adentro siempre usan la pose del v6", () => {
     expect(resolveViewPose(BARBATOS_VIEWS, "out", 1.6)).toEqual(BARBATOS_VIEWS.out);
