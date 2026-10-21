@@ -153,7 +153,7 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   },
   carpet: { width: 1.8, fromLeftWall: 0.2, chimneyGap: 0.3 },
   annex: { width: 6, heightRatio: 1.1, setbackFromFront: 0 },
-  pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.4 },
+  pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.8 },
   gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3 },
   park: {
     garlandFromBack: 11,

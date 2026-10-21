@@ -198,6 +198,35 @@ describe("ELEMENTS de Barbato's", () => {
       for (let i = 1; i < xs.length; i++) expect(xs[i] - xs[i - 1]).toBeCloseTo(0.12, 5);
     });
 
+    it("la pérgola tiene dos vigas 0.2x0.12 de span+0.8 y lamas con la extensión pedida", () => {
+      const { hz } = BARBATOS_LAYOUT.hall;
+      const { z: pz, height: h, columnsX } = BARBATOS_LAYOUT.pergola;
+      const span = columnsX[1] - columnsX[0];
+      const all = meshes("pergola");
+      const beams = all.filter((m) => near(size(m).y, 0.2) && near(size(m).z, 0.12));
+      expect(beams).toHaveLength(2);
+      expect(beams.map((m) => m.position.z).sort((a, b) => a - b)).toEqual([expect.closeTo(hz + 0.15, 5), expect.closeTo(pz, 5)]);
+      for (const b of beams) {
+        expect(size(b).x).toBeCloseTo(span + 0.8, 5);
+        expect(b.position.y).toBeCloseTo(h + 0.1, 5);
+        expect(b.position.x).toBeCloseTo((columnsX[0] + columnsX[1]) / 2, 5);
+      }
+      const lamas = all.filter((m) => near(size(m).x, 0.03) && near(size(m).y, 0.1));
+      for (const m of lamas) {
+        expect(m.position.y).toBeCloseTo(h + 0.25, 5);
+        expect(m.position.z - size(m).z / 2).toBeCloseTo(hz + 0.1, 5);
+        expect(m.position.z + size(m).z / 2).toBeCloseTo(pz + 0.1, 5);
+      }
+      const xs = lamas.map((m) => m.position.x);
+      expect(Math.min(...xs)).toBeGreaterThanOrEqual(columnsX[0] - 0.4 - 1e-6);
+      expect(Math.max(...xs)).toBeLessThanOrEqual(columnsX[1] + 0.4 + 1e-6);
+    });
+
+    it("la pérgola es simétrica respecto del eje de la puerta", () => {
+      const { columnsX } = BARBATOS_LAYOUT.pergola;
+      expect((columnsX[0] + columnsX[1]) / 2).toBeCloseTo(BARBATOS_LAYOUT.frontDoor.x, 5);
+    });
+
     it("los apliques del frente son cubos negros con emisor", () => {
       const all = meshes("front-wall");
       const bodies = all.filter((m) => m.material === ctx.materials("metal") && near(size(m).x, 0.1) && near(size(m).y, 0.1) && near(size(m).z, 0.1));

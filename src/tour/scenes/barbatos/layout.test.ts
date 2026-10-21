@@ -82,7 +82,7 @@ describe("layout de Barbato's con medidas reales", () => {
   });
   it("anexo, pérgola y galería", () => {
     expect(L0.annex).toEqual({ x: -12, width: 6, height: expect.closeTo(3.85, 4), zFront: expect.closeTo(5.06, 4), zBack: expect.closeTo(-10.35, 4) });
-    expect(L0.pergola).toEqual({ z: 8, height: 3.4, columnsX: [expect.closeTo(-3.9, 4), expect.closeTo(0.9, 4)] });
+    expect(L0.pergola).toEqual({ z: 8, height: 3.4, columnsX: [expect.closeTo(-4.3, 4), expect.closeTo(1.3, 4)] });
     expect(L0.gallery).toMatchObject({ zInner: -5, zPosts: expect.closeTo(-10.1, 4), zRoofOuter: expect.closeTo(-10.35, 4), postHeight: 3.3, fasciaHeight: 0.3, postsX: [-6, -3, 0, 3, 6, 9] });
   });
   it("el anexo llega al borde del techo de la galería", () => { expect(L0.annex.zBack).toBe(L0.gallery.zRoofOuter); });
@@ -104,7 +104,10 @@ describe("layout de Barbato's con medidas reales", () => {
     expect(L0.park.garland).toEqual({ z: -16, polesX: [-9, -3, 3, 9] });
     expect(L0.patio).toEqual({ x: -2, z: 10, width: 30, depth: 10 });
     expect(L0.tables.slice(0, 4).map((t) => [t.z, t.kind])).toEqual([[2.4, "round"], [-2.4, "rect"], [2.4, "rect"], [-2.4, "round"]]);
-    expect(L0.pointLights).toEqual([[0, 2.6, 5.8], [-4, 3.2, 0], [4, 3.2, 0], [expect.closeTo(7.2, 4), 0.9, 0], [0, 2.6, -7]]);
+    expect(L0.pointLights).toEqual([[expect.closeTo(-1.5, 4), 2.6, 5.8], [-4, 3.2, 0], [4, 3.2, 0], [expect.closeTo(7.2, 4), 0.9, 0], [0, 2.6, -7]]);
+  });
+  it("la luz del frente cuelga entre los apliques de la puerta", () => {
+    expect(L0.pointLights[0][0]).toBeCloseTo((L0.frontSconces[0].x + L0.frontSconces[1].x) / 2, 6);
   });
   it("mesas", () => {
     expect(L0.tables.map((t) => t.x)).toEqual([-6.5, -6.5, -3.5, -3.5, -0.5, -0.5, 2.5, 2.5, 5.5, 5.5]);

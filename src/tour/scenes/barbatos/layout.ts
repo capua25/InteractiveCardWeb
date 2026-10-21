@@ -281,7 +281,8 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
 
   const pl = d.pointLights;
   const pointLights: Vec3[] = [
-    [0, pl.frontY, hz + pl.frontAhead],
+    // la luz del frente cuelga entre los dos apliques de la puerta (eje de la puerta)
+    [(frontSconces[0].x + frontSconces[1].x) / 2, pl.frontY, hz + pl.frontAhead],
     ...pl.side.map((s): Vec3 => [s.x, s.y, 0]),
     [hx - T - pl.hearthAhead, pl.hearthY, 0],
     [0, pl.backY, -hz - pl.backBehind],
