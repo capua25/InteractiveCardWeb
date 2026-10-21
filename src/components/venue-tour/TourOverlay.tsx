@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { TourSceneId, VenueTheme } from "@/domain/venue";
 import { themeToCssVars } from "@/lib/theme";
@@ -29,6 +29,7 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
   const [view, setView] = useState<TourView>("out");
   const [roofVisible, setRoofVisible] = useState(true);
   const hostRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const controllerRef = useRef<TourController | null>(null);
   const requestClose = useEffectEvent(onClose);
@@ -37,13 +38,23 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
     closeRef.current?.focus();
   }, []);
 
+  // Escape y la trampa de Tab escuchan en document: tocar el canvas deja el foco en
+  // body, y desde ahí Tab tiene que volver al diálogo y no a la página de atrás.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") requestClose();
+      else if (event.key === "Tab" && dialogRef.current) trapFocus(dialogRef.current, event);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
+
+  // Al fallar se desmontan Afuera/Adentro/Sin techo: si el foco estaba ahí (o fuera
+  // del diálogo) quedaría en body, así que pasa a Cerrar.
+  useEffect(() => {
+    if (status !== "error") return;
+    if (!dialogRef.current?.contains(document.activeElement)) closeRef.current?.focus();
+  }, [status]);
 
   // Botón atrás de Android: una entrada propia en el historial; `popstate` cierra.
   // Al cerrar por otra vía se quita esa entrada con history.back().
@@ -139,32 +150,14 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
     setRoofVisible(next);
   };
 
-  // Tab y Shift+Tab ciclan entre los botones habilitados del diálogo.
-  const trapFocus = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    if (event.key !== "Tab") return;
-    const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not([disabled])"));
-    if (buttons.length === 0) return;
-    const first = buttons[0];
-    const last = buttons[buttons.length - 1];
-    const current = document.activeElement as HTMLElement | null;
-    const inside = current !== null && buttons.includes(current as HTMLButtonElement);
-    if (event.shiftKey && (current === first || !inside)) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && (current === last || !inside)) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
   return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={`Recorrido 3D de ${venueName}`}
       style={themeToCssVars(theme)}
+      ref={dialogRef}
       className="fixed inset-0 z-[60] flex flex-col bg-neutral-900 text-white"
-      onKeyDown={trapFocus}
     >
       <div className="relative z-10 flex flex-wrap items-center gap-2 p-3">
         {status === "ready" ? (
@@ -213,4 +206,22 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
     </div>,
     document.body,
   );
+}
+
+// Tab y Shift+Tab ciclan entre los botones habilitados del diálogo; con el foco
+// fuera de ellos, Tab va al primero y Shift+Tab al último.
+function trapFocus(dialog: HTMLElement, event: KeyboardEvent) {
+  const buttons = Array.from(dialog.querySelectorAll<HTMLButtonElement>("button:not([disabled])"));
+  if (buttons.length === 0) return;
+  const first = buttons[0];
+  const last = buttons[buttons.length - 1];
+  const current = document.activeElement;
+  const inside = buttons.some((button) => button === current);
+  if (event.shiftKey && (current === first || !inside)) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && (current === last || !inside)) {
+    event.preventDefault();
+    first.focus();
+  }
 }

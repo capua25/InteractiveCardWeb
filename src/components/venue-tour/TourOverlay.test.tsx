@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { TourOverlay } from "@/components/venue-tour/TourOverlay";
 import { loadTourScene } from "@/tour/registry";
 import type { TourModule } from "@/tour/types";
@@ -121,6 +121,55 @@ describe("TourOverlay", () => {
     loadTourSceneMock.mockReturnValue(new Promise(() => {}));
     renderOverlay();
     await userEvent.tab();
+    expect(screen.getByRole("button", { name: "Cerrar" })).toHaveFocus();
+  });
+
+  // Tocar el canvas manda el foco a body: la trampa tiene que atraparlo igual.
+  // Botones de la página alrededor del portal: sin la trampa, Tab desde body iría a ellos.
+  const renderWithPage = () => {
+    const before = document.createElement("button");
+    before.textContent = "Antes";
+    document.body.prepend(before);
+    const utils = renderOverlay();
+    const after = document.createElement("button");
+    after.textContent = "Después";
+    document.body.append(after);
+    return { ...utils, cleanupPage: () => (before.remove(), after.remove()) };
+  };
+
+  it("Tab con el foco en body vuelve al primer botón del diálogo", async () => {
+    const { cleanupPage } = renderWithPage();
+    onTestFinished(cleanupPage);
+    const out = await screen.findByRole("button", { name: "Afuera" });
+    (document.activeElement as HTMLElement).blur();
+    expect(document.body).toHaveFocus();
+    await userEvent.tab();
+    expect(out).toHaveFocus();
+  });
+
+  it("Shift+Tab con el foco en body va al último botón del diálogo", async () => {
+    const { cleanupPage } = renderWithPage();
+    onTestFinished(cleanupPage);
+    await screen.findByRole("button", { name: "Afuera" });
+    (document.activeElement as HTMLElement).blur();
+    await userEvent.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Cerrar" })).toHaveFocus();
+  });
+
+  it("si el contexto se pierde con el foco en un control que desaparece, el foco va a Cerrar", async () => {
+    renderOverlay();
+    const inside = await screen.findByRole("button", { name: "Adentro" });
+    inside.focus();
+    act(() => mount.mock.calls[0][1].onContextLost());
+    expect(inside).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cerrar" })).toHaveFocus();
+  });
+
+  it("si la carga falla con el foco fuera del diálogo, el foco va a Cerrar", async () => {
+    loadTourSceneMock.mockRejectedValueOnce(new Error("chunk"));
+    renderOverlay();
+    (document.activeElement as HTMLElement).blur();
+    await screen.findByRole("button", { name: "Reintentar" });
     expect(screen.getByRole("button", { name: "Cerrar" })).toHaveFocus();
   });
 
