@@ -6,6 +6,8 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 // volumen y no como planos sueltos.
 
 const UP = new THREE.Vector3(0, 1, 0);
+const POLE = 0.8; // |y| máximo de la dirección de una tarjeta sobre el elipsoide
+const MIN_TILT = 1.2; // |horizontal| / |vertical| mínimo de la normal de una tarjeta de copa (≈ 40° desde la vertical)
 
 export type Card = {
   center: THREE.Vector3;
@@ -15,7 +17,12 @@ export type Card = {
   height: number;
   bendFrom: THREE.Vector3; // centro del volumen: las normales apuntan desde acá
   bend: number; // 0 = normal plana de la tarjeta, 1 = normal radial del volumen
+  uv?: UvRect; // región de la textura (atlas); por defecto la textura entera
 };
+
+/** Región [u0, v0, u1, v1] de una textura atlas (v = 0 abajo). */
+export type UvRect = readonly [number, number, number, number];
+const FULL: UvRect = [0, 0, 1, 1];
 
 export class CardBuilder {
   private readonly pos: number[] = [];
@@ -43,7 +50,8 @@ export class CardBuilder {
       if (radial.lengthSq() < 1e-8) radial.copy(n);
       radial.normalize().multiplyScalar(c.bend).addScaledVector(n, 1 - c.bend).normalize();
       this.nor.push(radial.x, radial.y, radial.z);
-      this.uv.push(u, w);
+      const [u0, v0, u1, v1] = c.uv ?? FULL;
+      this.uv.push(u0 + (u1 - u0) * u, v0 + (v1 - v0) * w);
     }
     this.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
     return this;
@@ -92,9 +100,18 @@ export function addCrown(b: CardBuilder, c: Crown, R: () => number): void {
   const aspect = c.aspect ?? 1;
   for (const d of shellDirections(c.count, R)) {
     if (c.minY !== undefined && d.y < c.minY) d.y = c.minY + (d.y - c.minY) * 0.2;
+    // sin tarjetas en los polos: la de la punta quedaba suelta por encima de la copa
+    d.y = THREE.MathUtils.clamp(d.y, -POLE, POLE);
     d.normalize();
     const center = new THREE.Vector3(d.x * c.radii.x, d.y * c.radii.y, d.z * c.radii.z).multiplyScalar(shell * (0.85 + R() * 0.3)).add(c.center);
-    const normal = d.clone().setY(d.y * (c.flatten ?? 0.6)).normalize();
+    const normal = d.clone().setY(d.y * (c.flatten ?? 0.6));
+    // ninguna tarjeta acostada: si la normal queda casi vertical (copa de arriba/abajo), se inclina hacia un costado
+    const flat = Math.hypot(normal.x, normal.z);
+    if (flat < MIN_TILT * Math.abs(normal.y)) {
+      const a = flat > 1e-6 ? Math.atan2(normal.z, normal.x) : R() * Math.PI * 2;
+      normal.set(Math.cos(a) * MIN_TILT * Math.abs(normal.y), normal.y, Math.sin(a) * MIN_TILT * Math.abs(normal.y));
+    }
+    normal.normalize();
     const roll = (R() - 0.5) * Math.PI * 2;
     // "arriba" de la textura: el vertical del mundo rotado `roll` alrededor de la normal (si no es casi vertical)
     const up = UP.clone().applyAxisAngle(normal, roll);
@@ -103,13 +120,43 @@ export function addCrown(b: CardBuilder, c: Crown, R: () => number): void {
   }
 }
 
+export type Column = {
+  base: THREE.Vector3; // pie del árbol (x, 0, z)
+  from: number; // altura donde empieza el follaje
+  to: number; // altura de la punta
+  radius: number; // radio de la columna a media altura
+  count: number;
+  size: number;
+  aspect?: number;
+};
+
+/** Copa columnar (álamo): tarjetas apiladas en espiral de `from` a `to`, verticales y mirando hacia afuera, con la
+ * columna afinándose arriba. El follaje cubre exactamente ese tramo (sin tarjetas sueltas en la punta). */
+export function addColumn(b: CardBuilder, c: Column, R: () => number): void {
+  const aspect = c.aspect ?? 1.3;
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const phase = R() * Math.PI * 2;
+  for (let k = 0; k < c.count; k++) {
+    const t = (k + 0.5) / c.count;
+    const width = c.size * (1 - 0.35 * t) * (0.9 + R() * 0.2);
+    const height = width * aspect;
+    const y = c.from + height / 2 + t * (c.to - c.from - height);
+    const a = phase + k * golden + (R() - 0.5) * 0.4;
+    const out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+    const reach = c.radius * (0.35 + 0.35 * R()) * Math.sin(Math.PI * (0.25 + 0.75 * t)) ** 0.5;
+    const center = new THREE.Vector3(c.base.x, y, c.base.z).addScaledVector(out, reach);
+    const up = UP.clone().applyAxisAngle(out, (R() - 0.5) * 0.8);
+    b.add({ center, normal: out.clone().setY(0.15), up, width, height, bendFrom: new THREE.Vector3(c.base.x, y - 0.3, c.base.z), bend: 0.7 });
+  }
+}
+
 /** Mata en estrella: `count` tarjetas verticales cruzadas, apoyadas en `base`, con normales hacia arriba y afuera. */
-export function addStar(b: CardBuilder, base: THREE.Vector3, count: number, width: number, height: number, yaw: number, bend = 0.6): void {
+export function addStar(b: CardBuilder, base: THREE.Vector3, count: number, width: number, height: number, yaw: number, bend = 0.6, uv?: UvRect): void {
   const bendFrom = base.clone().add(new THREE.Vector3(0, -height * 0.4, 0));
   for (let i = 0; i < count; i++) {
     const a = yaw + (i / count) * Math.PI;
     const normal = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
-    b.add({ center: base.clone().add(new THREE.Vector3(0, height / 2, 0)), normal, up: UP, width, height, bendFrom, bend });
+    b.add({ center: base.clone().add(new THREE.Vector3(0, height / 2, 0)), normal, up: UP, width, height, bendFrom, bend, uv });
   }
 }
 

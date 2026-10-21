@@ -5,6 +5,7 @@ import { BARBATOS_DIMENSIONS } from "../dimensions";
 import { BARBATOS_LAYOUT, computeLayout } from "../layout";
 import { CURTAIN_ROLLED_SCALE } from "@/tour/engine/curtains";
 import { ELEMENTS } from "./index";
+import { LAVENDER_ATLAS } from "@/tour/engine/foliage-textures";
 import { LAVENDER } from "./forecourt";
 import { CARDS, treeCrowns } from "./vegetation";
 
@@ -282,50 +283,88 @@ describe("ELEMENTS de Barbato's", () => {
     it.each(["high", "low"] as const)("tarjetas por especie (%s)", (detail) => {
       const C = CARDS[detail];
       const meshes = veg(detail);
-      const trees = v.saplings.length * C.sapling + v.tallSaplings.length * C.tall + v.wallRow.length * C.wallRow + v.poplars.length * C.poplar;
+      // las cúpulas de los sauces usan la textura de hojas (van en el mesh de hojas); las faldas, la de hebras
+      const trees = v.saplings.length * C.sapling + v.tallSaplings.length * C.tall + v.wallRow.length * C.wallRow + v.poplars.length * C.poplar + v.willows.length * C.willowDome;
       expect(cardsOf(byMaterial(meshes, "leaves")[0])).toBe(trees);
-      expect(cardsOf(byMaterial(meshes, "willow")[0])).toBe(v.willows.length * (C.willowDome + C.willowSkirt));
+      expect(cardsOf(byMaterial(meshes, "willow")[0])).toBe(v.willows.length * C.willowSkirt);
       expect(cardsOf(byMaterial(meshes, "photinia")[0])).toBe(C.photinia);
-      const flax = byMaterial(meshes, "phormium")[0] as THREE.InstancedMesh;
-      expect(flax.isInstancedMesh).toBe(true);
-      expect(flax.count).toBe(v.phormiums.length);
-      expect(cardsOf(flax)).toBe(C.phormium);
+      expect(cardsOf(byMaterial(meshes, "phormium")[0])).toBe(v.phormiums.length * C.phormium);
     });
-    it("los celulares llevan menos tarjetas que desktop, y las copas de 6 a 10 tarjetas en los arbolitos", () => {
+    it("los celulares llevan menos tarjetas que desktop, y los arbolitos de 6 a 10 tarjetas", () => {
       for (const k of Object.keys(CARDS.high) as (keyof typeof CARDS.high)[]) expect(CARDS.low[k], k).toBeLessThanOrEqual(CARDS.high[k]);
       expect(CARDS.low.sapling).toBe(6);
       expect(CARDS.high.sapling).toBe(10);
       expect(CARDS.high.poplar).toBeGreaterThan(CARDS.low.poplar);
     });
-    it("las tarjetas usan materiales de follaje (alphaTest) con normales hacia afuera de la copa", () => {
-      const leaves = byMaterial(veg(), "leaves")[0];
-      expect((leaves.material as THREE.MeshStandardMaterial).alphaTest).toBe(0.5);
-      const ph = byMaterial(veg(), "photinia")[0];
-      const pos = ph.geometry.getAttribute("position"), nor = ph.geometry.getAttribute("normal");
-      const center = new THREE.Vector3(v.photinia.x, 2.9, v.photinia.z);
-      for (let i = 0; i < pos.count; i++) {
-        const out = new THREE.Vector3().fromBufferAttribute(pos, i).sub(center);
-        expect(new THREE.Vector3().fromBufferAttribute(nor, i).dot(out), `vértice ${i}`).toBeGreaterThan(0);
+    it("las tarjetas usan materiales de follaje (alphaTest)", () => {
+      for (const m of veg().filter((x) => x.material !== ctx.materials("trunk"))) expect((m.material as THREE.MeshStandardMaterial).alphaTest).toBe(0.5);
+    });
+    it("arbolitos: hojas repartidas a lo largo de los 2/3 de arriba del tallo, no una bola en la punta", () => {
+      const leaves = worldVertices(byMaterial(veg("high"), "leaves")[0]);
+      for (const s of v.saplings) {
+        const r = s.height * 0.22;
+        const ys = leaves.filter((p) => Math.hypot(p.x - s.x, p.z - s.z) < r + 0.4).map((p) => p.y);
+        expect(Math.min(...ys), `${s.x}`).toBeLessThan(s.height / 3 + 0.3);
+        expect(Math.min(...ys), `${s.x}`).toBeGreaterThan(s.height / 3 - 0.5);
+        expect(Math.max(...ys), `${s.x}`).toBeGreaterThan(s.height * 0.9);
+        // el follaje ocupa más de la mitad del alto (una bola de radio 0.22·h ocupaba menos)
+        expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(s.height * 0.5);
+      }
+    });
+    it("álamos: follaje en columna desde 0.3–0.5 m del pasto hasta cerca de la punta", () => {
+      const leaves = worldVertices(byMaterial(veg("high"), "leaves")[0]);
+      for (const p of v.poplars) {
+        const ys = leaves.filter((q) => Math.abs(q.x - p.x) < 0.9 && Math.abs(q.z - p.z) < 0.6).map((q) => q.y);
+        expect(Math.min(...ys), `${p.z}`).toBeGreaterThanOrEqual(0.05);
+        expect(Math.min(...ys), `${p.z}`).toBeLessThanOrEqual(0.6);
+        expect(Math.max(...ys), `${p.z}`).toBeGreaterThan(p.height * 0.75);
+      }
+    });
+    it("fotinia: varios tallos desde el pie y hojas solo en los 2/3 de arriba", () => {
+      const { x, z, height } = v.photinia;
+      // cada tallo es un cilindro abierto con su propio anillo de base (segmentos + 1 vértices): un tronco único
+      // dejaría un solo anillo al pie
+      const atFoot = worldVertices(byMaterial(veg("low"), "trunk")[0]).filter((p) => Math.abs(p.y) < 0.02 && Math.hypot(p.x - x, p.z - z) < 0.2);
+      expect(atFoot.length).toBeGreaterThanOrEqual(4 * (CARDS.low.trunk + 1));
+      const vs = worldVertices(byMaterial(veg(), "photinia")[0]);
+      // centro de cada tarjeta (promedio de sus 4 vértices): ninguno en el tercio de abajo, donde solo hay tallos
+      const centers = Array.from({ length: vs.length / 4 }, (_, c) => vs.slice(c * 4, c * 4 + 4).reduce((a, p) => a + p.y, 0) / 4);
+      expect(Math.min(...centers)).toBeGreaterThan(height / 3);
+      expect(Math.max(...vs.map((p) => p.y))).toBeLessThan(height + 0.9);
+    });
+    it("sauces: la falda de hebras cuelga hasta cerca del pasto y la cúpula va con tarjetas de hojas", () => {
+      const strands = worldVertices(byMaterial(veg(), "willow")[0]);
+      for (const w of v.willows) {
+        const ys = strands.filter((p) => Math.hypot(p.x - w.x, p.z - w.z) < 1.6).map((p) => p.y);
+        expect(Math.min(...ys)).toBeLessThan(0.9);
+        expect(Math.max(...ys)).toBeGreaterThan(2.3);
+        const dome = worldVertices(byMaterial(veg(), "leaves")[0]).filter((p) => Math.hypot(p.x - w.x, p.z - w.z) < 1.6 && p.y > 2);
+        expect(dome.length).toBeGreaterThan(0);
       }
     });
     it("cada árbol del layout conserva su posición: el tronco arranca en (x, 0, z)", () => {
       const trunk = byMaterial(veg(), "trunk")[0];
-      const base = worldVertices(trunk).filter((p) => Math.abs(p.y) < 1e-6);
+      const base = worldVertices(trunk).filter((p) => Math.abs(p.y) < 0.02); // los tallos inclinados dejan el anillo apenas torcido
       const trees = [...v.saplings, ...v.tallSaplings, ...v.wallRow, ...v.poplars, ...v.willows, v.photinia];
       for (const t of trees) {
         const near = base.filter((p) => Math.hypot(p.x - t.x, p.z - t.z) < 0.2);
         expect(near.length, `${t.x},${t.z}`).toBeGreaterThan(0);
       }
     });
-    it("los formios se plantan en sus posiciones con alto entre 1.4 y 2.2", () => {
-      const flax = byMaterial(veg(), "phormium")[0] as THREE.InstancedMesh;
-      const m = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+    it("los formios se plantan en sus posiciones con alto entre 1.4 y 2.2; el primero es variegado y el resto bronce", () => {
+      const flax = byMaterial(veg(), "phormium")[0];
+      const pos = flax.geometry.getAttribute("position"), uv = flax.geometry.getAttribute("uv");
       v.phormiums.forEach((f, i) => {
-        flax.getMatrixAt(i, m);
-        m.decompose(p, q, sc);
-        expect([p.x, p.y, p.z]).toEqual([expect.closeTo(f.x, 5), 0, expect.closeTo(f.z, 5)]);
-        expect(sc.y).toBeGreaterThanOrEqual(1.4);
-        expect(sc.y).toBeLessThanOrEqual(2.2);
+        const idx = Array.from({ length: pos.count }, (_, k) => k).filter((k) => Math.hypot(pos.getX(k) - f.x, pos.getZ(k) - f.z) < 0.45);
+        expect(idx.length, `${f.z}`).toBe(4 * CARDS.low.phormium);
+        const ys = idx.map((k) => pos.getY(k));
+        expect(Math.min(...ys)).toBeCloseTo(0, 5);
+        expect(Math.max(...ys)).toBeGreaterThanOrEqual(1.4 - 1e-5);
+        expect(Math.max(...ys)).toBeLessThanOrEqual(2.2 + 1e-5);
+        const us = idx.map((k) => uv.getX(k));
+        const variegated = Math.min(...us) >= 0.5;
+        const bronze = Math.max(...us) <= 0.5;
+        expect(i === 0 ? variegated : bronze, `formio ${i}`).toBe(true);
       });
     });
     it("ninguna copa toca la arena hexagonal ni un poste de la guirnalda (≥0.5 m)", () => {
@@ -388,7 +427,7 @@ describe("ELEMENTS de Barbato's", () => {
     };
     it.each(["high", "low"] as const)("cada mata son tarjetas cruzadas (%s) en las posiciones del layout, con escala variable", (detail) => {
       const m = lav(detail);
-      expect(m.geometry.getAttribute("position").count / 4).toBe(LAVENDER.cards[detail]);
+      expect(m.geometry.getAttribute("position").count / 4).toBe(LAVENDER.cards[detail] + 1);
       const mat = new THREE.Matrix4(), p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
       const scales = new Set<number>();
       BARBATOS_LAYOUT.forecourt.lavender.forEach((pt, i) => {
@@ -398,6 +437,24 @@ describe("ELEMENTS de Barbato's", () => {
         scales.add(Math.round(sc.x * 100));
       });
       expect(scales.size).toBeGreaterThan(3);
+    });
+    it("una tarjeta horizontal a media altura con la vista desde arriba tapa la estrella de las cruzadas", () => {
+      const g = lav("low").geometry;
+      const pos = g.getAttribute("position"), uv = g.getAttribute("uv");
+      const flat: number[] = [];
+      for (let c = 0; c < pos.count / 4; c++) {
+        const ys = [0, 1, 2, 3].map((k) => pos.getY(c * 4 + k));
+        if (Math.max(...ys) - Math.min(...ys) < 1e-6) flat.push(c);
+      }
+      expect(flat).toHaveLength(1);
+      const c = flat[0];
+      expect(pos.getY(c * 4)).toBeCloseTo(LAVENDER.height * LAVENDER.top.y, 5);
+      for (let k = 0; k < 4; k++) {
+        expect(uv.getX(c * 4 + k)).toBeLessThanOrEqual(LAVENDER_ATLAS.top[2] + 1e-6);
+        expect(uv.getY(c * 4 + k)).toBeLessThanOrEqual(LAVENDER_ATLAS.top[3] + 1e-6);
+      }
+      // ancho de la tapa ≥ 3/4 del de la mata: desde arriba cubre el centro donde se cruzan las tarjetas
+      expect(LAVENDER.top.width).toBeGreaterThanOrEqual(0.75);
     });
     it("desktop lleva más tarjetas que celulares y el material recorta por alphaTest", () => {
       expect(LAVENDER.cards.high).toBeGreaterThan(LAVENDER.cards.low);

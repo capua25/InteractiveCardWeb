@@ -1,14 +1,15 @@
 import * as THREE from "three";
-import { addCrown, addStar, CardBuilder, limb, mergeAll } from "@/tour/engine/cards";
+import { addColumn, addCrown, addStar, CardBuilder, limb, mergeAll } from "@/tour/engine/cards";
+import { FLAX_ATLAS } from "@/tour/engine/foliage-textures";
 import { rng } from "@/tour/engine/textures";
 import type { GeometryDetail, SceneElement } from "@/tour/types";
 import type { BarbatosLayout } from "../layout";
 
-const POPLAR = { radius: 0.7, lift: 0.3, seed: 5, jitter: 0.15 };
-const SAPLING = { trunkRadius: 0.06, trunkRatio: 0.55, crownRadius: 0.22, crownY: 0.72 };
+const POPLAR = { radius: 0.7, lift: 0.3, seed: 5, jitter: 0.15, foliageFrom: 0.4 };
+const SAPLING = { trunkRadius: 0.06, crownRadius: 0.22 };
 const WILLOW = { trunkRadius: 0.11, trunkHeight: 1.2, crown: { rx: 1.2, ry: 0.8, y: 2.3 }, skirt: { y: 0.5, height: 2, scale: 0.7 } };
-const PHOTINIA = { trunkRadius: 0.1, trunkHeight: 1.4, crownRadius: 1.3, crownY: 2.9 };
-const PHORMIUM = { min: 1.4, max: 2.2, seed: 11, width: 0.8 };
+const PHOTINIA = { stems: 5, stemRadius: 0.05, crownRadius: 1.3, tipSpread: 0.55, foliageFrom: 0.4 }; // foliageFrom: fracción del alto
+const PHORMIUM = { min: 1.4, max: 2.2, seed: 11, width: 0.8, variegated: [0] as readonly number[] }; // índices variegados (verde/amarillo)
 const SEED = 23;
 
 /** Radio de copa (círculo en planta) de cada árbol dentro del lote, para chequear despejes. */
@@ -28,8 +29,8 @@ export function treeCrowns(l: BarbatosLayout): { x: number; z: number; radius: n
 // Tarjetas por planta y segmentos de tronco según el nivel de detalle. Cambia triángulos y textura (512/256 px),
 // nunca la cantidad de meshes: cada especie va en un solo mesh (o InstancedMesh) por material.
 export const CARDS = {
-  high: { sapling: 10, tall: 18, poplar: 24, wallRow: 12, willowDome: 12, willowSkirt: 18, photinia: 22, phormium: 4, trunk: 7, branches: 3 },
-  low: { sapling: 6, tall: 11, poplar: 14, wallRow: 7, willowDome: 7, willowSkirt: 11, photinia: 13, phormium: 3, trunk: 5, branches: 2 },
+  high: { sapling: 10, tall: 18, poplar: 26, wallRow: 12, willowDome: 12, willowSkirt: 18, photinia: 32, phormium: 4, trunk: 7, branches: 3 },
+  low: { sapling: 6, tall: 11, poplar: 15, wallRow: 7, willowDome: 7, willowSkirt: 11, photinia: 18, phormium: 3, trunk: 5, branches: 2 },
 } as const satisfies Record<GeometryDetail, Record<string, number>>;
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -45,15 +46,51 @@ function branches(parts: THREE.BufferGeometry[], x: number, z: number, fromY: nu
   }
 }
 
-/** Matas en estrella de una sola planta (geometría compartida por InstancedMesh), base en y=0. */
-export function starGeometry(count: number, width: number, height: number): THREE.BufferGeometry {
-  const b = new CardBuilder();
-  addStar(b, V(0, 0, 0), count, width, height, 0);
-  return b.geometry();
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+
+// Arbolito joven: tallo fino y tarjetas chicas repartidas en espiral a lo largo de los 2/3 de arriba, cada una con
+// su ramita (no una bola sobre un palo).
+function sapling(trunks: THREE.BufferGeometry[], leaves: CardBuilder, x: number, z: number, height: number, r: number, cards: number, segs: number, R: () => number) {
+  trunks.push(limb(V(x, 0, z), V(x, height * 0.97, z), SAPLING.trunkRadius * 0.75, SAPLING.trunkRadius * 0.2, segs));
+  const phase = R() * Math.PI * 2;
+  for (let k = 0; k < cards; k++) {
+    const t = (k + 0.5) / cards;
+    const y = height * (1 / 3 + (2 / 3) * t) - r * 0.35 * t;
+    const a = phase + k * GOLDEN + (R() - 0.5) * 0.5;
+    const out = V(Math.cos(a), 0, Math.sin(a));
+    const reach = r * (0.3 + 0.3 * R()) * (1 - 0.35 * t);
+    const center = V(x, y, z).addScaledVector(out, reach);
+    trunks.push(limb(V(x, y - reach * 0.6, z), center, 0.012, 0.006, 3));
+    const size = r * (1.05 - 0.35 * t) * (0.85 + R() * 0.3);
+    leaves.add({ center, normal: out.clone().setY(0.35), up: V(0, 1, 0).applyAxisAngle(out, (R() - 0.5) * 1.2), width: size, height: size, bendFrom: V(x, y - 0.2, z), bend: 0.7 });
+  }
 }
 
-// Vegetación del parque en 5 draw calls: troncos y ramas (un mesh), hojas de los árboles (un mesh de tarjetas),
-// sauces (tarjetas de hebras colgantes), fotinia y formios (instanciados). Fuera del muro no hay árboles.
+// Fotinia: arbusto de varios tallos que se abren hacia arriba, con hojas rojas en los 2/3 superiores (no una bola).
+function photiniaShrub(trunks: THREE.BufferGeometry[], b: CardBuilder, x: number, z: number, height: number, cards: number, segs: number, R: () => number) {
+  const P = PHOTINIA;
+  const phase = R() * Math.PI * 2;
+  const stems = Array.from({ length: P.stems }, (_, i) => {
+    const a = phase + (i / P.stems) * Math.PI * 2 + (R() - 0.5) * 0.4;
+    const base = V(x + Math.cos(a) * 0.08, 0, z + Math.sin(a) * 0.08);
+    const tip = V(x + Math.cos(a) * P.tipSpread, height * (0.88 + R() * 0.1), z + Math.sin(a) * P.tipSpread);
+    trunks.push(limb(base, tip, P.stemRadius, P.stemRadius * 0.3, segs));
+    return { base, tip };
+  });
+  for (let k = 0; k < cards; k++) {
+    const { base, tip } = stems[k % P.stems];
+    const t = P.foliageFrom + (1 - P.foliageFrom) * ((Math.floor(k / P.stems) + R()) / Math.ceil(cards / P.stems));
+    const onStem = base.clone().lerp(tip, t);
+    const a = Math.atan2(onStem.z - z, onStem.x - x) + (R() - 0.5) * 1.6;
+    const out = V(Math.cos(a), 0, Math.sin(a));
+    const center = onStem.clone().addScaledVector(out, 0.1 + R() * 0.3);
+    const size = 1.15 + R() * 0.3;
+    b.add({ center, normal: out.clone().setY(0.3), up: V(0, 1, 0).applyAxisAngle(out, (R() - 0.5) * 1.2), width: size, height: size * 1.1, bendFrom: V(x, center.y - 0.4, z), bend: 0.7 });
+  }
+}
+
+// Vegetación del parque en 5 draw calls: troncos y ramas (un mesh), hojas de los árboles y cúpulas de sauce (un mesh
+// de tarjetas), faldas de sauce (hebras colgantes), fotinia y formios. Fuera del muro no hay árboles.
 export const vegetation: SceneElement<BarbatosLayout> = {
   id: "vegetation",
   build({ layout: l, materials, detail = "low" }) {
@@ -65,13 +102,7 @@ export const vegetation: SceneElement<BarbatosLayout> = {
     const willow = new CardBuilder();
     const photinia = new CardBuilder();
 
-    for (const s of v.saplings) {
-      const r = s.height * SAPLING.crownRadius;
-      const crown = V(s.x, s.height * SAPLING.crownY, s.z);
-      trunks.push(limb(V(s.x, 0, s.z), V(s.x, crown.y + r * 0.1, s.z), SAPLING.trunkRadius * 0.8, SAPLING.trunkRadius * 0.3, C.trunk));
-      branches(trunks, s.x, s.z, s.height * SAPLING.trunkRatio, crown, r * 0.5, C.branches, SAPLING.trunkRadius * 0.4, C.trunk, R);
-      addCrown(leaves, { center: crown, radii: V(r, r * 1.4, r), count: C.sapling, size: r * 1.4, shell: 0.45, flatten: 0.45 }, R);
-    }
+    for (const s of v.saplings) sapling(trunks, leaves, s.x, s.z, s.height, s.height * SAPLING.crownRadius, C.sapling, C.trunk, R);
     for (const t of v.tallSaplings) {
       const r = t.radius;
       const crown = V(t.x, t.height - r, t.z);
@@ -83,15 +114,17 @@ export const vegetation: SceneElement<BarbatosLayout> = {
     for (const w of v.wallRow) {
       const top = POPLAR.lift + w.height;
       trunks.push(limb(V(w.x, 0, w.z), V(w.x, top * 0.8, w.z), 0.035, 0.012, C.trunk));
-      addCrown(leaves, { center: V(w.x, POPLAR.lift + w.height * 0.55, w.z), radii: V(w.radius * 1.3, w.height * 0.45, w.radius * 1.3), count: C.wallRow, size: 0.6, aspect: 1.3, shell: 0.5, flatten: 0.35 }, R);
+      addColumn(leaves, { base: V(w.x, 0, w.z), from: POPLAR.foliageFrom + 0.4, to: top, radius: w.radius * 1.2, count: C.wallRow, size: 0.55 }, R);
     }
     const J = rng(POPLAR.seed);
     for (const p of v.poplars) {
       const w = POPLAR.radius * (1 - POPLAR.jitter + 2 * POPLAR.jitter * J());
       const h = p.height * (1 - POPLAR.jitter + 2 * POPLAR.jitter * J());
       J(); // yaw de la versión anterior: se consume para no correr la secuencia de jitter
-      trunks.push(limb(V(p.x, 0, p.z), V(p.x, POPLAR.lift + h * 0.75, p.z), 0.055, 0.02, C.trunk));
-      addCrown(leaves, { center: V(p.x, POPLAR.lift + h * 0.53, p.z), radii: V(w * 0.8, h * 0.47, w * 0.8), count: C.poplar, size: w * 1.2, aspect: 1.3, shell: 0.5, flatten: 0.35 }, R);
+      // follaje desde ~0.4 m del pasto hasta la punta (columna), como los álamos de la foto
+      const top = POPLAR.lift + h;
+      trunks.push(limb(V(p.x, 0, p.z), V(p.x, POPLAR.lift + h * 0.7, p.z), 0.055, 0.02, C.trunk));
+      addColumn(leaves, { base: V(p.x, 0, p.z), from: POPLAR.foliageFrom, to: top, radius: w * 0.8, count: C.poplar, size: w * 1.15 }, R);
     }
 
     for (const t of v.willows) {
@@ -99,8 +132,8 @@ export const vegetation: SceneElement<BarbatosLayout> = {
       const crown = V(t.x, c.y, t.z);
       trunks.push(limb(V(t.x, 0, t.z), V(t.x, c.y + c.ry * 0.3, t.z), WILLOW.trunkRadius, WILLOW.trunkRadius * 0.4, C.trunk));
       branches(trunks, t.x, t.z, WILLOW.trunkHeight, crown, c.rx * 0.6, C.branches, WILLOW.trunkRadius * 0.45, C.trunk, R);
-      // cúpula: tarjetas sobre la mitad de arriba del elipsoide
-      addCrown(willow, { center: crown, radii: V(c.rx, c.ry, c.rx), count: C.willowDome, size: 1.15, shell: 0.6, minY: 0, flatten: 0.3 }, R);
+      // cúpula: tarjetas de hojas (no hebras: desde arriba las hebras acostadas parecían paja) en la mitad de arriba
+      addCrown(leaves, { center: crown, radii: V(c.rx, c.ry, c.rx), count: C.willowDome, size: 1.15, shell: 0.6, minY: 0, flatten: 0.3 }, R);
       // falda: tarjetas verticales de hebras colgantes alrededor del borde, de la copa hasta cerca del pasto
       const top = c.y + c.ry * 0.5;
       const bottom = WILLOW.skirt.y;
@@ -119,21 +152,17 @@ export const vegetation: SceneElement<BarbatosLayout> = {
     }
 
     const ph = v.photinia;
-    const phCrown = V(ph.x, PHOTINIA.crownY, ph.z);
-    trunks.push(limb(V(ph.x, 0, ph.z), V(ph.x, PHOTINIA.crownY, ph.z), PHOTINIA.trunkRadius, PHOTINIA.trunkRadius * 0.3, C.trunk));
-    branches(trunks, ph.x, ph.z, PHOTINIA.trunkHeight * 0.6, phCrown, PHOTINIA.crownRadius * 0.55, C.branches + 1, PHOTINIA.trunkRadius * 0.6, C.trunk, R);
-    addCrown(photinia, { center: phCrown, radii: V(PHOTINIA.crownRadius, PHOTINIA.crownRadius * 1.15, PHOTINIA.crownRadius), count: C.photinia, size: 1.2, shell: 0.5 }, R);
+    photiniaShrub(trunks, photinia, ph.x, ph.z, ph.height, C.photinia, C.trunk, R);
 
-    // formios: una estrella de tarjetas compartida, instanciada con alto y giro por planta
+    // formios: estrellas de tarjetas por planta en un solo mesh; cada una toma su variedad del atlas (bronce o
+    // variegado), con alto y giro propios
     const F = rng(PHORMIUM.seed);
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const flax = new THREE.InstancedMesh(starGeometry(C.phormium, PHORMIUM.width, 1), materials("phormium"), v.phormiums.length);
+    const flax = new CardBuilder();
     v.phormiums.forEach((f, i) => {
       const h = PHORMIUM.min + F() * (PHORMIUM.max - PHORMIUM.min);
-      flax.setMatrixAt(i, m.compose(V(f.x, 0, f.z), q.setFromAxisAngle(V(0, 1, 0), i * 2.1), V(1, h, 1)));
+      const uv = PHORMIUM.variegated.includes(i) ? FLAX_ATLAS.variegated : FLAX_ATLAS.bronze;
+      addStar(flax, V(f.x, 0, f.z), C.phormium, PHORMIUM.width, h, i * 2.1, 0.6, uv);
     });
-    flax.instanceMatrix.needsUpdate = true;
 
     const g = new THREE.Group();
     g.add(
@@ -141,7 +170,7 @@ export const vegetation: SceneElement<BarbatosLayout> = {
       new THREE.Mesh(leaves.geometry(), materials("leaves")),
       new THREE.Mesh(willow.geometry(), materials("willow")),
       new THREE.Mesh(photinia.geometry(), materials("photinia")),
-      flax,
+      new THREE.Mesh(flax.geometry(), materials("phormium")),
     );
     return g;
   },

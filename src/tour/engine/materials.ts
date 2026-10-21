@@ -9,15 +9,22 @@ export type MaterialKey =
   | "leaves" | "willow" | "photinia" | "phormium" | "lavender" | "acWhite";
 
 // Follaje en tarjetas: recorte por alphaTest (sin blending, escribe profundidad, sombra recortada por el mismo
-// alphaTest en el depth material automático de three) y alpha-to-coverage para suavizar el borde con MSAA.
+// alphaTest en el depth material automático de three). Corte duro, sin alpha-to-coverage: el MSAA del renderer
+// alcanza para el borde y no hay franjas semitransparentes que dependan del mipmap.
 export const FOLIAGE_KEYS = ["leaves", "willow", "photinia", "phormium", "lavender"] as const satisfies readonly MaterialKey[];
 const FOLIAGE_ALPHA_TEST = 0.5;
 
-// Las tarjetas traen normales dobladas hacia afuera de la copa (sombreado de volumen). three invierte la normal en
-// las caras traseras de un material DoubleSide: acá se omite ese giro para que ambas caras usen la normal de la copa.
+// Ajustes de shader del follaje:
+// - Las tarjetas traen normales dobladas hacia afuera de la copa (sombreado de volumen). three invierte la normal en
+//   las caras traseras de un material DoubleSide: acá se omite ese giro para que ambas caras usen la normal de la copa.
+// - Sin especular: con el sol bajo detrás de los árboles, el Fresnel de las tarjetas vistas de canto pintaba un halo
+//   amarillo pálido en el borde de las copas. Las hojas quedan mate (solo difusa).
 const KEEP_CROWN_NORMALS = THREE.ShaderChunk.normal_fragment_begin.replace("normal *= faceDirection;", "");
-function keepCrownNormals(shader: { fragmentShader: string }) {
-  shader.fragmentShader = shader.fragmentShader.replace("#include <normal_fragment_begin>", KEEP_CROWN_NORMALS);
+const NO_SPECULAR = "material.specularColor = vec3( 0.0 );\nmaterial.specularColorBlended = vec3( 0.0 );\nmaterial.specularF90 = 0.0;";
+function foliageShader(shader: { fragmentShader: string }) {
+  shader.fragmentShader = shader.fragmentShader
+    .replace("#include <normal_fragment_begin>", KEEP_CROWN_NORMALS)
+    .replace("#include <lights_physical_fragment>", `#include <lights_physical_fragment>\n${NO_SPECULAR}`);
 }
 
 export const UNIT: Partial<Record<MaterialKey, number>> = {
@@ -70,11 +77,11 @@ export function createMaterials(
     woodDark: { color: "#2a2c34", roughness: 0.7 },
     gabion: { map: T.stone, color: tint(2.3, 2.3, 2.5), roughness: 0.9 },
     // follaje: la textura trae el color; el tinte (azul > 1) compensa la luz cálida como en el pasto
-    leaves: { map: T.leaves, color: tint(0.9, 1, 1.35), roughness: 0.9 },
-    willow: { map: T.willow, color: tint(0.85, 1.05, 1.45), roughness: 0.9 },
+    leaves: { map: T.leaves, color: tint(0.74, 1, 1.45), roughness: 0.9 },
+    willow: { map: T.willow, color: tint(0.7, 1.02, 1.6), roughness: 0.9 },
     photinia: { map: T.photiniaLeaves, color: tint(1, 1, 1.25), roughness: 0.9 },
     phormium: { map: T.flax, color: tint(1, 1, 1.3), roughness: 0.8 },
-    lavender: { map: T.lavender, color: tint(0.95, 1, 1.45), roughness: 1 },
+    lavender: { map: T.lavender, color: tint(0.82, 1, 1.5), roughness: 1 },
     // vidrio: transparente, visible de ambos lados, con reflejo del entorno
     glass: {
       color: "#a9c2cc", roughness: 0.04, metalness: 0.1, transparent: true,
@@ -88,9 +95,8 @@ export function createMaterials(
       m = new THREE.MeshStandardMaterial(def[key]);
       if ((FOLIAGE_KEYS as readonly MaterialKey[]).includes(key)) {
         m.alphaTest = FOLIAGE_ALPHA_TEST;
-        m.alphaToCoverage = true;
         m.side = THREE.DoubleSide;
-        m.onBeforeCompile = keepCrownNormals;
+        m.onBeforeCompile = foliageShader;
       }
       cache.set(key, m);
     }

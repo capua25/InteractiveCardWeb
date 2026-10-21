@@ -49,7 +49,7 @@ describe("materials", () => {
 
   it("el follaje es de tarjetas recortadas: alphaTest 0.5, sin blending, escribe profundidad, doble cara", () => {
     for (const k of FOLIAGE_KEYS) {
-      expect(M(k), k).toMatchObject({ alphaTest: 0.5, alphaToCoverage: true, transparent: false, depthWrite: true, side: THREE.DoubleSide, flatShading: false });
+      expect(M(k), k).toMatchObject({ alphaTest: 0.5, alphaToCoverage: false, transparent: false, depthWrite: true, side: THREE.DoubleSide, flatShading: false });
       expect(typeof M(k).onBeforeCompile, k).toBe("function");
     }
   });
@@ -65,6 +65,13 @@ describe("materials", () => {
     expect(shader.fragmentShader).not.toContain("#include <normal_fragment_begin>");
     expect(shader.fragmentShader).not.toContain("normal *= faceDirection");
     expect(shader.fragmentShader).toContain("vec3 normal = normalize( vNormal );");
+  });
+
+  it("el follaje no tiene especular (sin halo de Fresnel en el borde de las copas a contraluz)", () => {
+    const shader = { fragmentShader: "#include <lights_physical_fragment>\nrest" };
+    M("lavender").onBeforeCompile(shader as never, null as never);
+    expect(shader.fragmentShader).toMatch(/#include <lights_physical_fragment>\s*material\.specularColor = vec3\( 0\.0 \);/);
+    expect(shader.fragmentShader).toContain("material.specularF90 = 0.0;");
   });
 
   it("los materiales con tinte conservan su multiplicador lineal (puede pasar de 1)", () => {
