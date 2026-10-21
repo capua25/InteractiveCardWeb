@@ -65,9 +65,6 @@ export type BarbatosDimensions = {
     fasciaHeight: number;
   };
   park: {
-    wallHeight: number;
-    wallDistanceFromBack: number;
-    wallHalfWidth: number;
     garlandFromBack: number;
     garlandPolesX: number[];
     trees: { x: number; from: "back" | "front"; offset: number; scale: number }[];
@@ -85,8 +82,20 @@ export type BarbatosDimensions = {
     frontY: number;
     backY: number;
   };
-  // Caja del target: márgenes desde el muro del parque y el borde del pedregullo.
-  lot: { marginX: number; marginBehindWall: number; topAboveRidge: number };
+  // Lote: `length` en z y `width` en x; el fondo queda a `backWallFromGallery` del borde del techo de la
+  // galería. Muro perimetral de bloques; la entrada del frente va centrada a `centerFromAnnex` del eje
+  // del anexo. Los márgenes arman la caja del target.
+  lot: {
+    length: number;
+    width: number;
+    backWallFromGallery: number;
+    wallHeight: number;
+    wallThickness: number;
+    entrance: { width: number; centerFromAnnex: number };
+    marginX: number;
+    marginBehindWall: number;
+    topAboveRidge: number;
+  };
 };
 
 export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
@@ -129,9 +138,6 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
   pergola: { distanceFromFront: 3, height: 3.4, columnsFromAxis: 2.4 },
   gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3 },
   park: {
-    wallHeight: 1.1,
-    wallDistanceFromBack: 20,
-    wallHalfWidth: 21,
     garlandFromBack: 11,
     garlandPolesX: [-9, -3, 3, 9],
     trees: [
@@ -159,5 +165,15 @@ export const BARBATOS_DIMENSIONS: BarbatosDimensions = {
     frontY: 2.6,
     backY: 2.6,
   },
-  lot: { marginX: 4, marginBehindWall: 2, topAboveRidge: 1 },
+  lot: {
+    length: 60,
+    width: 38,
+    backWallFromGallery: 32,
+    wallHeight: 1.75,
+    wallThickness: 0.2,
+    entrance: { width: 4.5, centerFromAnnex: 0 },
+    marginX: 4,
+    marginBehindWall: 2,
+    topAboveRidge: 1,
+  },
 };

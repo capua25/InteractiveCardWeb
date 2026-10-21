@@ -57,7 +57,26 @@ describe("layout de Barbato's con medidas reales", () => {
     expect(L0.gallery).toMatchObject({ zInner: -5, zPosts: expect.closeTo(-10.1, 4), zRoofOuter: expect.closeTo(-10.35, 4), postHeight: 3.3, fasciaHeight: 0.3, postsX: [-6, -3, 0, 3, 6, 9] });
   });
   it("el anexo llega al borde del techo de la galería", () => { expect(L0.annex.zBack).toBe(L0.gallery.zRoofOuter); });
-  it("el muro del parque arranca en el borde del techo de la galería", () => { expect(L0.park.wall.zStart).toBe(L0.gallery.zRoofOuter); });
+  it("lote de 60×38 anclado a la galería", () => {
+    expect(L0.lot).toMatchObject({ zBack: expect.closeTo(-42.35, 4), zFront: expect.closeTo(17.65, 4), halfWidth: 19, centerZ: expect.closeTo(-12.35, 4), wallHeight: 1.75, wallThickness: 0.2 });
+    close(L0.lot.zBack, L0.gallery.zRoofOuter - 32);
+    close(L0.lot.zFront - L0.lot.zBack, 60);
+    close(L0.lot.zFront - L0.hall.hz, 12.65);
+    expect(L0.targetBounds).toEqual({ min: [-23, 0, expect.closeTo(-44.35, 4)], max: [23, 7.4, expect.closeTo(17.65, 4)] });
+  });
+  it("la entrada del frente mide 4.5 y queda frente al anexo", () => {
+    expect(L0.lot.entrance).toEqual({ x0: -14.25, x1: -9.75 });
+    close((L0.lot.entrance.x0 + L0.lot.entrance.x1) / 2, L0.annex.x);
+    expect(L0.lot.frontSegments).toEqual([{ x0: -19, x1: -14.25 }, { x0: -9.75, x1: 19 }]);
+  });
+  it("el lote ya no cuelga el muro de park", () => { expect("wall" in L0.park).toBe(false); });
+  it("parque, patio, mesas y luces", () => {
+    expect(L0.park.trees).toEqual([[-15,-15,1.1],[-7,-20,1.3],[4,-21,1.2],[13,-14,1],[17,-20,1.2],[-18,-21,0.9],[-20,9,1.1],[20,11,1]].map(([x,z,scale]) => ({ x, z, scale })));
+    expect(L0.park.garland).toEqual({ z: -16, polesX: [-9, -3, 3, 9] });
+    expect(L0.patio).toEqual({ x: -2, z: 10, width: 30, depth: 10 });
+    expect(L0.tables.slice(0, 4).map((t) => [t.z, t.kind])).toEqual([[2.4, "round"], [-2.4, "rect"], [2.4, "rect"], [-2.4, "round"]]);
+    expect(L0.pointLights).toEqual([[0, 2.6, 5.8], [-4, 3.2, 0], [4, 3.2, 0], [expect.closeTo(7.2, 4), 0.9, 0], [0, 2.6, -7]]);
+  });
   it("mesas", () => {
     expect(L0.tables.map((t) => t.x)).toEqual([-6.5, -6.5, -3.5, -3.5, -0.5, -0.5, 2.5, 2.5, 5.5, 5.5]);
     expect(L0.tables.every((t) => Math.abs(Math.abs(t.z) - 2.4) < 1e-9)).toBe(true);

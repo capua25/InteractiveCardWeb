@@ -39,8 +39,17 @@ export type BarbatosLayout = {
   annex: { x: number; width: number; height: number; zFront: number; zBack: number };
   pergola: { z: number; height: number; columnsX: number[] };
   gallery: { zInner: number; zPosts: number; zRoofOuter: number; depth: number; postHeight: number; fasciaHeight: number; postsX: number[] };
+  lot: {
+    zBack: number;
+    zFront: number;
+    halfWidth: number;
+    centerZ: number;
+    wallHeight: number;
+    wallThickness: number;
+    entrance: Segment;
+    frontSegments: Segment[];
+  };
   park: {
-    wall: { zStart: number; z: number; halfWidth: number; height: number };
     trees: { x: number; z: number; scale: number }[];
     garland: { z: number; polesX: number[] };
   };
@@ -201,16 +210,26 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     columnsX: [frontDoor.x - d.pergola.columnsFromAxis, frontDoor.x + d.pergola.columnsFromAxis],
   };
 
-  // Parque: muros laterales arrancan en el borde del techo de la galería; fondo, guirnalda y árboles desde el fondo/frente.
-  const pk = d.park;
-  const parkWall = {
-    zStart: gallery.zRoofOuter,
-    z: -hz - pk.wallDistanceFromBack,
-    halfWidth: pk.wallHalfWidth,
-    height: pk.wallHeight,
+  // Lote: fondo a backWallFromGallery del borde del techo de la galería, frente a `length` del fondo;
+  // la entrada del frente queda abierta y centrada respecto del anexo.
+  const lt = d.lot;
+  const zBack = gallery.zRoofOuter - lt.backWallFromGallery;
+  const halfWidth = lt.width / 2;
+  const entranceX = annex.x + lt.entrance.centerFromAnnex;
+  const lot = {
+    zBack,
+    zFront: zBack + lt.length,
+    halfWidth,
+    centerZ: zBack + lt.length / 2,
+    wallHeight: lt.wallHeight,
+    wallThickness: lt.wallThickness,
+    entrance: { x0: entranceX - lt.entrance.width / 2, x1: entranceX + lt.entrance.width / 2 },
+    frontSegments: plinthSegments(-halfWidth, halfWidth, [{ x: entranceX, width: lt.entrance.width }]),
   };
+
+  // Parque: guirnalda y árboles desde el fondo/frente del salón.
+  const pk = d.park;
   const park = {
-    wall: parkWall,
     trees: pk.trees.map((t) => ({ x: t.x, z: t.from === "back" ? -hz - t.offset : hz + t.offset, scale: t.scale })),
     garland: { z: -hz - pk.garlandFromBack, polesX: [...pk.garlandPolesX] },
   };
@@ -240,10 +259,10 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     [0, pl.backY, -hz - pl.backBehind],
   ];
 
-  // Caja del target: márgenes desde el muro del parque; frente = borde del pedregullo.
+  // Caja del target: márgenes desde el muro del lote; frente = muro del frente.
   const targetBounds: Bounds = {
-    min: [-(pk.wallHalfWidth + d.lot.marginX), 0, parkWall.z - d.lot.marginBehindWall],
-    max: [pk.wallHalfWidth + d.lot.marginX, d.hall.ridgeHeight + d.lot.topAboveRidge, patio.z + patio.depth / 2],
+    min: [-(halfWidth + lt.marginX), 0, zBack - lt.marginBehindWall],
+    max: [halfWidth + lt.marginX, d.hall.ridgeHeight + lt.topAboveRidge, lot.zFront],
   };
 
   return {
@@ -263,6 +282,7 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     annex,
     pergola,
     gallery,
+    lot,
     park,
     patio,
     tables,

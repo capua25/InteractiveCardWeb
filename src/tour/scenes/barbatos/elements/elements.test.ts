@@ -84,4 +84,56 @@ describe("ELEMENTS de Barbato's", () => {
     const [roof] = meshes("gallery-roof");
     expect(roof.position.y).toBeCloseTo(3.6 + 0.05, 6);
   });
+
+  describe("park y suelo", () => {
+    const l = BARBATOS_LAYOUT.lot;
+    const bbox = (m: THREE.Mesh) => {
+      m.geometry.computeBoundingBox();
+      return m.geometry.boundingBox!;
+    };
+    // sin mergear: el id "park" construye los meshes sueltos
+    const parkMeshes = () => {
+      const out: THREE.Mesh[] = [];
+      ELEMENTS.find((e) => e.id === "park")!.build(ctx).traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh);
+      });
+      return out;
+    };
+    const walls = () => parkMeshes().filter((m) => m.material === ctx.materials("wallLow"));
+
+    it("park levanta los 4 muros de 1.75 con la entrada abierta", () => {
+      const w = walls();
+      expect(w).toHaveLength(5);
+      for (const m of w) expect(bbox(m).getSize(new THREE.Vector3()).y).toBeCloseTo(1.75, 5);
+      const sides = w.filter((m) => Math.abs(Math.abs(m.position.x) - l.halfWidth) < 1e-6);
+      expect(sides).toHaveLength(2);
+      for (const m of sides) expect(bbox(m).getSize(new THREE.Vector3()).z).toBeCloseTo(60, 5);
+      const front = w.filter((m) => Math.abs(m.position.z - l.zFront) < 1e-6);
+      expect(front).toHaveLength(2);
+      for (const m of front) {
+        const half = bbox(m).getSize(new THREE.Vector3()).x / 2;
+        const [a, b] = [m.position.x - half, m.position.x + half];
+        expect(b <= l.entrance.x0 + 1e-6 || a >= l.entrance.x1 - 1e-6).toBe(true);
+      }
+    });
+
+    it("dos pilares de piedra 0.55×0.55×1.9 flanquean la entrada, con hiladas de ladrillo", () => {
+      const pillars = parkMeshes().filter((m) => m.material === ctx.materials("stone"));
+      expect(pillars).toHaveLength(2);
+      for (const m of pillars) {
+        const s = bbox(m).getSize(new THREE.Vector3());
+        expect([s.x, s.y, s.z].map((v) => +v.toFixed(5))).toEqual([0.55, 1.9, 0.55]);
+        expect(Math.abs(m.position.x - (l.entrance.x0 + l.entrance.x1) / 2)).toBeGreaterThan((l.entrance.x1 - l.entrance.x0) / 2);
+      }
+      expect(parkMeshes().filter((m) => m.material === ctx.materials("plaster"))).toHaveLength(6);
+    });
+
+    it("el suelo mide 160 y se centra en el lote", () => {
+      const g = ELEMENTS.find((e) => e.id === "ground")!.build(ctx) as THREE.Mesh;
+      const s = bbox(g).getSize(new THREE.Vector3());
+      expect(s.x).toBe(160);
+      expect(s.y).toBe(160);
+      expect(g.position.z).toBeCloseTo(l.centerZ, 5);
+    });
+  });
 });
