@@ -67,8 +67,16 @@ export type BarbatosLayout = {
     frontSegments: Segment[];
   };
   park: {
-    trees: { x: number; z: number; scale: number }[];
     garland: { poles: { x: number; z: number }[]; poleHeight: number; hangY: number; sag: number; bulbSpacing: number };
+  };
+  vegetation: {
+    saplings: { x: number; z: number; height: number }[];
+    poplars: { x: number; z: number; height: number }[];
+    phormiums: { x: number; z: number }[];
+    willows: { x: number; z: number; height: number }[];
+    conifer: { x: number; z: number; height: number };
+    photinia: { x: number; z: number; height: number };
+    background: { seed: number; count: number; minHeight: number; maxHeight: number };
   };
   firePit: { x: number; z: number; ringRadius: number; ringHeight: number; basketRadius: number; sandRadius: number; sandVertices: { x: number; z: number }[] };
   patio: { x: number; z: number; width: number; depth: number };
@@ -295,12 +303,6 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     frontSegments: plinthSegments(-halfWidth, halfWidth, [{ x: entranceX, width: lt.entrance.width }]),
   };
 
-  // Parque: árboles desde el fondo/frente del salón.
-  const pk = d.park;
-  const park = {
-    trees: pk.trees.map((t) => ({ x: t.x, z: t.from === "back" ? -hz - t.offset : hz + t.offset, scale: t.scale })),
-  };
-
   // Fogón centrado en x, a fromGallery del borde del techo de la galería.
   const fp = d.firePit;
   const firePitZ = gallery.zRoofOuter - fp.fromGallery;
@@ -312,6 +314,26 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     basketRadius: fp.basketDiameter / 2,
     sandRadius: fp.sandRadius,
     sandVertices: hexagonVertices(0, firePitZ, fp.sandRadius),
+  };
+
+  // Vegetación: plantines contra el muro del fondo, álamos y formios contra el muro izquierdo.
+  const vg = d.vegetation;
+  const along = (i: number, n: number, z0: number, z1: number) => z0 + ((z1 - z0) * i) / (n - 1);
+  const vegetation = {
+    saplings: vg.saplings.xs.map((x, i) => ({ x, z: zBack + vg.saplings.fromBackWall, height: vg.saplings.heights[i] })),
+    poplars: Array.from({ length: vg.poplars.count }, (_, i) => ({
+      x: -halfWidth + vg.poplars.fromSideWall,
+      z: along(i, vg.poplars.count, vg.poplars.zStart, zBack + vg.poplars.endFromBackWall),
+      height: vg.poplars.baseHeight + (i % vg.poplars.heightCycle) * vg.poplars.heightStep,
+    })),
+    phormiums: Array.from({ length: vg.phormiums.count }, (_, i) => ({
+      x: -halfWidth + vg.phormiums.fromSideWall,
+      z: along(i, vg.phormiums.count, vg.phormiums.zStart, zBack + vg.phormiums.endFromBackWall),
+    })),
+    willows: vg.willows.map((w) => ({ ...w, height: vg.willowHeight })),
+    conifer: vg.conifer,
+    photinia: vg.photinia,
+    background: vg.background,
   };
 
   // Guirnalda: un poste por vértice de la arena; el cable cuelga 5 cm bajo la punta.
@@ -370,8 +392,9 @@ export function computeLayout(d: BarbatosDimensions): BarbatosLayout {
     pergola,
     gallery,
     lot,
-    park: { ...park, garland },
+    park: { garland },
     firePit,
+    vegetation,
     patio,
     tables,
     pointLights,

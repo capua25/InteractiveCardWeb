@@ -21,6 +21,7 @@ import { plinth } from "./plinth";
 import { roof } from "./roof";
 import { tables } from "./tables";
 import { trusses } from "./trusses";
+import { vegetation } from "./vegetation";
 
 // Registro de la escena: agregar una pieza = un archivo nuevo + una línea acá.
 export const ELEMENTS: readonly SceneElement<BarbatosLayout>[] = [
@@ -43,6 +44,7 @@ export const ELEMENTS: readonly SceneElement<BarbatosLayout>[] = [
   galleryCurtains,
   park,
   firePit,
+  vegetation,
   garland,
   tables,
 ];

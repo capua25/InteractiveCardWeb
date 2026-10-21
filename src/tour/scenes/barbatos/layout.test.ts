@@ -143,10 +143,41 @@ describe("layout de Barbato's con medidas reales", () => {
   });
   it("el lote ya no cuelga el muro de park", () => { expect("wall" in L0.park).toBe(false); });
   it("parque, patio, mesas y luces", () => {
-    expect(L0.park.trees).toEqual([[-15,-15,1.1],[-7,-20,1.3],[4,-21,1.2],[13,-14,1],[17,-20,1.2],[-18,-21,0.9],[-20,9,1.1],[20,11,1]].map(([x,z,scale]) => ({ x, z, scale })));
+    expect("trees" in L0.park).toBe(false);
     expect(L0.patio).toEqual({ x: -2, z: 10, width: 30, depth: 10 });
     expect(L0.tables.slice(0, 4).map((t) => [t.z, t.kind])).toEqual([[2.4, "round"], [-2.4, "rect"], [2.4, "rect"], [-2.4, "round"]]);
     expect(L0.pointLights).toEqual([[expect.closeTo(-1.5, 4), 2.6, 5.8], [-4, 3.2, 0], [4, 3.2, 0], [expect.closeTo(7.2, 4), 0.9, 0], [0, 2.6, -7]]);
+  });
+  it("vegetación: plantines, álamos, formios, sauces, conífera y fotinia en coordenadas absolutas", () => {
+    const v = L0.vegetation;
+    const zb = L0.lot.zBack;
+    expect(v.saplings.map((s) => [s.x, s.height])).toEqual([[-15, 2.5], [-9, 3.5], [-3, 2], [3, 4], [9, 3], [15, 2.8]]);
+    for (const s of v.saplings) close(s.z, zb + 1.5);
+    expect(v.poplars).toHaveLength(22);
+    close(v.poplars[0].z, -14);
+    close(v.poplars[21].z, zb + 1);
+    expect(v.poplars.every((p) => Math.abs(p.x - (-19 + 1.2)) < 1e-9)).toBe(true);
+    expect(v.poplars.slice(0, 4).map((p) => p.height)).toEqual([5, 5.5, 6, 5]);
+    expect(v.phormiums).toHaveLength(8);
+    close(v.phormiums[0].z, -16);
+    close(v.phormiums[7].z, zb + 3);
+    expect(v.phormiums.every((p) => Math.abs(p.x - (-19 + 2.2)) < 1e-9)).toBe(true);
+    expect(v.willows).toEqual([{ x: -8, z: -29, height: 6 }, { x: 7, z: -36, height: 6 }, { x: -5, z: -39, height: 6 }, { x: 9, z: -28, height: 6 }]);
+    expect(v.conifer).toEqual({ x: 4, z: -40.5, height: 7 });
+    expect(v.photinia).toEqual({ x: 16.5, z: -16, height: 4.5 });
+    expect(v.background).toEqual({ seed: 21, count: 18, minHeight: 12, maxHeight: 15 });
+  });
+  it("la vegetación respeta lote, edificio y arena", () => {
+    const { lot, firePit: fp, vegetation: v } = L0;
+    const trees = [...v.saplings, ...v.poplars, ...v.phormiums, ...v.willows, v.conifer, v.photinia];
+    for (const t of trees) {
+      expect(Math.abs(t.x), `x ${t.x}`).toBeLessThan(lot.halfWidth);
+      expect(t.z).toBeGreaterThan(lot.zBack);
+      expect(t.z).toBeLessThan(lot.zFront);
+      const inBuilding = t.x >= -15 && t.x <= 9.5 && t.z >= -10.35 && t.z <= 5.06;
+      expect(inBuilding, `edificio ${t.x},${t.z}`).toBe(false);
+      expect(Math.hypot(t.x - fp.x, t.z - fp.z), `arena ${t.x},${t.z}`).toBeGreaterThan(fp.sandRadius + 1);
+    }
   });
   it("la luz del frente cuelga entre los apliques de la puerta", () => {
     expect(L0.pointLights[0][0]).toBeCloseTo((L0.frontSconces[0].x + L0.frontSconces[1].x) / 2, 6);

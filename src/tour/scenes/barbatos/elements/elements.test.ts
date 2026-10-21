@@ -5,6 +5,7 @@ import { BARBATOS_DIMENSIONS } from "../dimensions";
 import { BARBATOS_LAYOUT, computeLayout } from "../layout";
 import { CURTAIN_ROLLED_SCALE } from "@/tour/engine/curtains";
 import { ELEMENTS } from "./index";
+import { backgroundTrees } from "./vegetation";
 
 const ctx = { ...createTestEngineContext(), layout: BARBATOS_LAYOUT };
 
@@ -17,7 +18,7 @@ describe("ELEMENTS de Barbato's", () => {
   it("registra los elementos del v6 en orden", () => {
     expect(ELEMENTS.map((e) => e.id)).toEqual([
       "ground", "patio", "front-wall", "back-wall", "gables", "plinth", "floor", "chimney", "ac-units", "trusses",
-      "roof", "annex", "annex-roof", "pergola", "gallery", "gallery-roof", "gallery-curtains", "park", "fire-pit", "garland", "tables",
+      "roof", "annex", "annex-roof", "pergola", "gallery", "gallery-roof", "gallery-curtains", "park", "fire-pit", "vegetation", "garland", "tables",
     ]);
   });
 
@@ -207,6 +208,44 @@ describe("ELEMENTS de Barbato's", () => {
       expect(s.x).toBe(160);
       expect(s.y).toBe(160);
       expect(g.position.z).toBeCloseTo(l.centerZ, 5);
+    });
+  });
+
+  describe("vegetación", () => {
+    const veg = () => {
+      const out: THREE.Mesh[] = [];
+      ELEMENTS.find((e) => e.id === "vegetation")!.build(ctx).traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) out.push(o as THREE.Mesh);
+      });
+      return out;
+    };
+    it("vegetation usa a lo sumo 9 draw calls", () => {
+      expect(veg().length).toBeLessThanOrEqual(9);
+    });
+    it("park ya no planta árboles", () => {
+      const parkObj = ELEMENTS.find((e) => e.id === "park")!.build(ctx);
+      let crowns = 0;
+      parkObj.traverse((o) => { if ((o as THREE.Mesh).isMesh && (o as THREE.Mesh).material === ctx.materials("trunk")) crowns++; });
+      expect(crowns).toBe(0);
+    });
+    it("los árboles de fondo quedan fuera del lote", () => {
+      const { lot } = BARBATOS_LAYOUT;
+      const trees = backgroundTrees(BARBATOS_LAYOUT);
+      expect(trees).toHaveLength(18);
+      for (const t of trees) {
+        expect(t.height).toBeGreaterThanOrEqual(12);
+        expect(t.height).toBeLessThanOrEqual(15);
+        const inX = t.x + t.radius > -lot.halfWidth && t.x - t.radius < lot.halfWidth;
+        const inZ = t.z - t.radius < lot.zFront && t.z + t.radius > lot.zBack;
+        expect(inX && inZ, `árbol ${t.x},${t.z} r${t.radius}`).toBe(false);
+      }
+      const bg = veg().find((m) => m.material === ctx.materials("crownDark") && m.geometry.boundingBox === null && !(m as THREE.InstancedMesh).isInstancedMesh)!;
+      expect(bg).toBeDefined();
+      const pos = bg.geometry.getAttribute("position");
+      for (let i = 0; i < pos.count; i++) {
+        const inLot = Math.abs(pos.getX(i)) < lot.halfWidth && pos.getZ(i) > lot.zBack;
+        expect(inLot).toBe(false);
+      }
     });
   });
 

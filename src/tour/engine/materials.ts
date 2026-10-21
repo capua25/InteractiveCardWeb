@@ -3,7 +3,7 @@ import type { Textures } from "./textures";
 
 export type MaterialKey =
   | "plaster" | "stone" | "roof" | "metal" | "cement" | "gravel" | "grass"
-  | "ceiling" | "wood" | "carpet" | "chair" | "trunk" | "crown" | "wallLow"
+  | "ceiling" | "wood" | "carpet" | "chair" | "trunk" | "wallLow"
   | "hearth" | "sconce" | "bulb" | "fire" | "glass"
   | "greyStucco" | "frameGray" | "frostedGlass" | "nylon" | "canvas" | "sand"
   | "crownLight" | "crownDark" | "photinia" | "phormium" | "lavender"
@@ -34,7 +34,6 @@ export function createMaterials(
     carpet: { map: T.carpet, roughness: 1 },
     chair: { color: "#1e1e20", roughness: 0.6 },
     trunk: { color: "#5a4030", roughness: 1 },
-    crown: { color: "#4f7038", roughness: 1, flatShading: true },
     wallLow: { map: T.wallLow, roughness: 1 },
     hearth: { color: "#141110", roughness: 1 },
     sconce: { color: "#fff1cc", emissive: "#ffcf80", emissiveIntensity: 3 },
