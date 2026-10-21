@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { WhatsAppButton } from "@/components/whatsapp-button/WhatsAppButton";
 import { RevealItem } from "@/components/scroll-reveal/RevealItem";
 import { HeroIntro } from "@/components/hero/HeroIntro";
@@ -8,9 +9,11 @@ type HeroProps = {
   tagline: string;
   image: string;
   whatsappHref: string;
+  /** Acción secundaria al lado del WhatsApp (p. ej. el lanzador del recorrido 3D). */
+  tourLauncher?: ReactNode;
 };
 
-export function Hero({ name, tagline, image, whatsappHref }: HeroProps) {
+export function Hero({ name, tagline, image, whatsappHref, tourLauncher }: HeroProps) {
   return (
     <header className="relative flex min-h-[90svh] items-end overflow-hidden">
       <ParallaxImage src={image} alt={`Foto principal de ${name}`} />
@@ -23,7 +26,10 @@ export function Hero({ name, tagline, image, whatsappHref }: HeroProps) {
           <p className="max-w-md text-lg text-white/90">{tagline}</p>
         </RevealItem>
         <RevealItem>
-          <WhatsAppButton href={whatsappHref} />
+          <div data-testid="hero-actions" className="flex flex-wrap items-center justify-center gap-3">
+            <WhatsAppButton href={whatsappHref} />
+            {tourLauncher}
+          </div>
         </RevealItem>
       </HeroIntro>
     </header>

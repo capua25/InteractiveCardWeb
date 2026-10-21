@@ -3,6 +3,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { themeToCssVars } from "@/lib/theme";
 import { CardShell } from "@/components/card-shell/CardShell";
 import { Hero } from "@/components/hero/Hero";
+import { TourLauncher } from "@/components/venue-tour/TourLauncher";
 import { About } from "@/components/about/About";
 import { EventTypes } from "@/components/event-types/EventTypes";
 import { Gallery } from "@/components/gallery/Gallery";
@@ -22,7 +23,15 @@ export function VenueCard({ venue }: { venue: Venue }) {
       className="min-h-svh bg-[#fffaf5] text-neutral-800"
     >
       <CardShell envelope={venue.envelope} venueName={venue.name} logo={venue.logo} whatsappHref={whatsappHref}>
-        <Hero name={venue.name} tagline={venue.tagline} image={venue.hero.image} whatsappHref={whatsappHref} />
+        <Hero
+          name={venue.name}
+          tagline={venue.tagline}
+          image={venue.hero.image}
+          whatsappHref={whatsappHref}
+          tourLauncher={
+            venue.tour ? <TourLauncher scene={venue.tour.scene} venueName={venue.name} theme={venue.theme} /> : undefined
+          }
+        />
         <main>
           {venue.about ? <About text={venue.about} /> : null}
           {venue.eventTypes?.length ? <EventTypes items={venue.eventTypes} /> : null}

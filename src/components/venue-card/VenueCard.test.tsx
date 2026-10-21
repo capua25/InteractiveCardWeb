@@ -109,4 +109,16 @@ describe("VenueCard", () => {
     expect(heroCta.closest("[inert]")).not.toBeNull();
     expect(screen.getByTestId("whatsapp-floating").closest("[inert]")).not.toBeNull();
   });
+
+  it("con tour muestra Recorrer el salón junto al WhatsApp del hero", () => {
+    render(<VenueCard venue={{ ...minimalVenue, tour: { scene: "barbatos" } }} />);
+    const actions = screen.getByTestId("hero-actions");
+    expect(within(actions).getByRole("link", { name: "Consultanos por WhatsApp" })).toBeInTheDocument();
+    expect(within(actions).getByRole("button", { name: "Recorrer el salón" })).toBeInTheDocument();
+  });
+
+  it("sin tour no muestra el botón del recorrido", () => {
+    render(<VenueCard venue={minimalVenue} />);
+    expect(screen.queryByRole("button", { name: "Recorrer el salón" })).not.toBeInTheDocument();
+  });
 });
