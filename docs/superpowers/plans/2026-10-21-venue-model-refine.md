@@ -44,7 +44,7 @@
 | Cortinas | por tramo: nylon translúcido + faldón de lona negra 0.9; arrancan **enrolladas** (abiertas) con el rollo visible arriba |
 | Pérgola | columnas de 8 listones 0.05×0.1 a paso 0.09 (≈0.68 de ancho); techo: 2 vigas paralelas al frente + lamas en z cada 0.12; columnas a ±2.4 del eje de la puerta |
 | Apliques | cubo negro ~0.1 + emisor cálido abajo. Reflectores opcionales: **no** se hacen (ver Preguntas) |
-| Lote | 60 (z) × 38 (x), centrado en x = 0; muro del fondo a 32 del borde exterior de la galería; muro gris de bloques alto 1.6, base `#a39f97`, hiladas 0.2×0.4 |
+| Lote | 60 (z) × 38 (x), centrado en x = 0; muro del fondo a 32 del borde exterior de la galería; muro gris de bloques alto 1.6, base `#a39f97`, hiladas 0.2×0.4, en los 4 lados; el del frente (z = hz + 12.65) con una **entrada abierta de 4.5** (sin portón) centrada en el eje del anexo (x = −12) |
 | Pedregullo | `#9a948c`; borde de ~25 piedras sueltas 0.4–0.6 en curva del lado del anexo + fila de lavandas (`#4a5a2a`, flor `#746a8a`) |
 | Fogón | aro de gaviones de piedra **⌀ 2.4** (outer), alto 0.55; canasto de hierro negro ~0.8 con leños; brasas emisivas sutiles; centro x = 0, z = borde galería − 22 |
 | Arena | **hexágono** circunradio 3.5 (`CircleGeometry(3.5, 6)`), `#c2ab8d`, y = 0.02 |
@@ -179,7 +179,7 @@ Uso: `npm run dev -- -p 3200` (en background) y `node scripts/tour-shots.mjs htt
   - `gallery: { depth: 5, roofOverhang: 0.35, postInset: 0.1, postSpacing: 3, postCount: 6, postHeight: 3.3, fasciaHeight: 0.3 }` (se elimina `roofDepth`; `layout.gallery` suma `fasciaHeight`).
   - `tables.rowsFromLeftWall: [2.5, 5.5, 8.5, 11.5, 14.5]`.
   - `park.wall.zStart` pasa a derivarse de `gallery.zRoofOuter` (el lote completo es la Task 5).
-- Views: `out: { pos: [16, 9, 19], target: [-1.5, 2, -1] }`, `in: { pos: [-8.2, 1.75, 0], target: [-2, 1.5, 0] }`.
+- Views: `out: { pos: [15, 9.5, 16.5], target: [-1.5, 2, -1] }` (queda dentro del lote, delante del muro del frente de la Task 5), `in: { pos: [-8.2, 1.75, 0], target: [-2, 1.5, 0] }`.
 - [ ] **Step 1: tests que fallan** — reescribir el bloque `layout de Barbato's reproduce el v6` como `layout de Barbato's con medidas reales`:
   - `hall` → `{ hx: 9, hz: 5, ridgeHeight: 6.4 }`, `slope ≈ atan2(2.9, 5)`.
   - `frontDoor` → `{ x: -1.5, width: 2.3, height: 2.7, sill: 0, rows: 4 }`; `frontWindows.map(x)` → `[-5.5, ≈1.85, ≈4.45, ≈7.05]`; última ventana: `9 − (7.05 + 0.75) ≈ 1.2`.
@@ -191,7 +191,7 @@ Uso: `npm run dev -- -p 3200` (en background) y `node scripts/tour-shots.mjs htt
   - `tables.map(x)` → `[-6.5,-6.5,-3.5,-3.5,-0.5,-0.5,2.5,2.5,5.5,5.5]`, `z = ±2.4`.
   - `las mesas no tocan el hogar`: `max(t.x) + 1.36 < chimney.x − chimney.depth/2`.
   - Ajustar los tests de anclaje (`alargar L…`) a los valores nuevos (`7.15/4.55/1.95`, `3.2`), y el de `sin ventana a la izquierda` (apliques de puerta desde `door.x`).
-  - Nuevo `views.test.ts`: `la vista Adentro queda dentro del salón` (`|in.pos.x| < hx − T`, `|in.pos.z| < hz − T`, `in.pos.y < wallHeight`) y `los targets caen dentro de targetBounds`.
+  - Nuevo `views.test.ts`: `la vista Adentro queda dentro del salón` (`|in.pos.x| < hx − T`, `|in.pos.z| < hz − T`, `in.pos.y < wallHeight`) y `los targets caen dentro de targetBounds`. En la Task 5 se suma `la vista Afuera queda dentro del lote y por encima del muro` (con `resolveViewPose` en aspecto 1.6: `pos.z < lot.zFront − 1`; en aspecto angosto 0.5 y ancho: `pos.y > lot.wallHeight + 2`).
 - [ ] **Step 2:** `npx vitest run src/tour/scenes/barbatos` → FAIL.
 - [ ] **Step 3:** implementar en `dimensions.ts`/`layout.ts`/`views.ts`; `pergola.ts` debe centrar su viga transversal y lamas en `(columnsX[0]+columnsX[1])/2` (hoy usa x = 0).
 - [ ] **Step 4:** `npx vitest run src/tour && npx tsc --noEmit` → PASS (elements.test incluido; si `la galería sigue a postInset…` usa `roofDepth`, adaptar).
@@ -210,9 +210,10 @@ Uso: `npm run dev -- -p 3200` (en background) y `node scripts/tour-shots.mjs htt
   - `dimensions.lot: { length: 60, width: 38, backWallFromGallery: 32, wallHeight: 1.6, wallThickness: 0.2, marginX: 4, marginBehindWall: 2, topAboveRidge: 1 }` (reemplaza `park.wallHeight/wallDistanceFromBack/wallHalfWidth` y el `lot` viejo).
   - `layout.lot: { zBack: number; zFront: number; halfWidth: number; centerZ: number; wallHeight: number; wallThickness: number }` con `zBack = zRoofOuter − 32 = -42.35`, `zFront = zBack + 60 = 17.65`, `halfWidth = 19`, `centerZ = -12.35`. Se elimina `layout.park.wall`.
   - `targetBounds = { min: [-23, 0, -44.35], max: [23, 7.4, 17.65] }`.
-  - `park.ts`: muro del fondo (z = `zBack`) y dos laterales en x = ±19 de `zBack` a `zFront`, material `wallLow`, alto 1.6. **Sin muro del frente** (ver Preguntas). Árboles viejos sin cambios hasta Task 14.
+  - `dimensions.lot` suma `entrance: { width: 4.5, centerFromAnnex: 0 }` → `layout.lot.entrance: { x0: number; x1: number }` con centro en `annex.x + centerFromAnnex` (= −12) → `{ x0: -14.25, x1: -9.75 }`; `layout.lot.frontSegments: Segment[] = plinthSegments(-halfWidth, halfWidth, [{ x: -12, width: 4.5 }])` → `[{ x0: -19, x1: -14.25 }, { x0: -9.75, x1: 19 }]`.
+  - `park.ts`: muro del fondo (z = `zBack`), dos laterales en x = ±19 de `zBack` a `zFront`, y el del frente en z = `zFront` por tramos `frontSegments` (entrada abierta, sin portón ni reja: no se ven en las fotos `IMG_20261020_183407027_MFNR.jpg` / `IMG_20261020_182151259_HDR.jpg`, que solo muestran el lateral de bloques). Todo `P.box` con `wallLow`, alto 1.6, espesor 0.2 → se junta en el mismo mesh mergeado (0 draw calls nuevos). Árboles viejos sin cambios hasta Task 14.
   - `ground.ts`: plano de 160 centrado en `(0, lot.centerZ)`.
-- [ ] **Step 1: tests que fallan**: en layout.test `lote de 60×38 anclado a la galería` (valores de arriba; `zFront − zBack === 60`; `zFront − hz ≈ 12.65`); en elements.test `park levanta muro de fondo y laterales de 1.6 sobre el lote` (3 meshes `wallLow`, alto 1.6; laterales con largo z = 60).
+- [ ] **Step 1: tests que fallan**: en layout.test `lote de 60×38 anclado a la galería` (valores de arriba; `zFront − zBack === 60`; `zFront − hz ≈ 12.65`); layout `la entrada del frente mide 4.5 y queda frente al anexo` (`entrance` y `frontSegments` de arriba; `(x0+x1)/2 === annex.x`); en elements.test `park levanta los 4 muros de 1.6 con la entrada abierta` (5 meshes `wallLow`, alto 1.6; laterales con largo z = 60; ningún mesh `wallLow` con `z ≈ zFront` cubre x ∈ (−14.25, −9.75)); en `views.test.ts` `la vista Afuera queda dentro del lote y por encima del muro` (ver Task 4).
 - [ ] **Step 2:** FAIL. **Step 3:** implementar. **Step 4:** `npx vitest run src/tour && npx tsc --noEmit` → PASS.
 - [ ] **Step 5: visual** `t5` (`far`): muro gris de bloques con hiladas visibles; comparar `IMG_20261020_183709086_SR.jpg`.
 - [ ] **Step 6:** commit `feat(tour): 60x38 lot with 1.6 m concrete block perimeter wall`
@@ -416,7 +417,7 @@ Uso: `npm run dev -- -p 3200` (en background) y `node scripts/tour-shots.mjs htt
 
 **Interfaces:**
 - Produces:
-  - `dimensions.forecourt: { stones: 25, stoneSize: [0.4, 0.6], lavenderEvery: 2, lavenderOffset: 0.9 }`; patio sin cambios de tamaño (30×10, xOffset −2).
+  - `dimensions.forecourt: { side: -1, stones: 25, stoneSize: [0.4, 0.6], lavenderEvery: 2, lavenderOffset: 0.9 }` (`side` = lado del patio; ver Pregunta 10); patio sin cambios de tamaño (30×10, xOffset −2).
   - `layout.forecourt: { border: { x, z, size }[]; lavender: { x, z }[] }`: piedras en una Bézier cuadrática `P0 = (patioX0, hz + 0.5)`, `P1 = (patioX0 − 1.5, hz + patio.depth/2)`, `P2 = (patioX0 + 2, hz + patio.depth − 0.5)` con `patioX0 = patio.x − patio.width/2 = −17`, t equiespaciado, tamaño `0.4 + 0.2·rng`; lavandas en cada 2ª piedra, corridas 0.9 hacia −x.
   - `forecourt.ts`: piedras `IcosahedronGeometry(0.5, 0)` aplastadas en y (0.6) `stone` instanciadas; lavanda = mata `SphereGeometry(0.35, 6, 4)` `lavender` + flor `SphereGeometry(0.2, 5, 3)` `lavenderFlower` a +0.3, 2 instanciados.
 - [ ] **Step 1: tests que fallan**: layout `25 piedras de borde en el lado del anexo dentro del lote` (todas con `x < patioX0 + 2.1`, `x > −halfWidth`, `z ∈ [hz, lot.zFront]`, tamaños ∈ [0.4, 0.6]); elements `forecourt: 3 InstancedMesh y ningún mesh suelto`; actualizar ids (`forecourt` después de `patio`).
@@ -446,7 +447,8 @@ Uso: `npm run dev -- -p 3200` (en background) y `node scripts/tour-shots.mjs htt
 1. **Puerta no centrada (resuelto en el plan):** con 3 ventanas a la derecha a paso 2.6 y la última a 1.2 de la esquina, una puerta de 2.3 centrada en x = 0 pisa la primera ventana (1.1–2.6). Se pone la puerta a 7.5 de la esquina izquierda (x = −1.5), lo que coincide con `IMG_20261020_182240420_HDR.jpg`. "1.2 de la esquina" se interpreta como distancia al **borde** de la ventana.
 2. **Cumbrera no medida:** 6.4 mantiene la pendiente actual (~30°). Obliga a bajar el hogar interior a 5.2.
 3. **Posición del lote en x:** se centra en el eje del salón (x = ±19). Con eso el anexo queda a 4 m del muro −x; los álamos solo van en la zona del parque (z < −14), así que no chocan. Confirmar si el lote está corrido.
-4. **Muro del frente del lote:** no hay evidencia en las fotos; se modelan solo el fondo y los laterales (60 m). Confirmar si hay muro/portón al frente.
+4. **Muro del frente del lote (resuelto):** el usuario confirma que existe, con una entrada de 4–5 m frente al anexo. Las fotos no lo muestran (ni portón ni reja), así que es el mismo muro de bloques gris de 1.6 con un hueco abierto de 4.5 centrado en x = −12 (Task 5). La vista Afuera se mueve a z = 16.5 para no quedar detrás de él.
+10. **Lado del borde de piedras y lavandas (conflicto con el requisito):** `IMG_20261020_182151259_HDR.jpg` e `IMG_20261020_183407027_MFNR.jpg` muestran la curva de piedras + lavandas + formios del lado **+x** (hastial de la chimenea, con el lateral de bloques detrás), no del lado del anexo. Recomendación: confirmarlo antes de la Task 15; para que el cambio sea un solo número, la Task 15 debe tomar el lado de `dimensions.forecourt.side: -1 | 1` (default −1 = anexo, según el requisito; espejar `patioX0` ↔ borde +x del patio cuando vale 1).
 5. **"Borde exterior de la galería"** = borde del techo (`zRoofOuter = −10.35`), igual que hoy para el anexo.
 6. **Reflectores opcionales** a H−0.3 cada 3.5: no se hacen (sin ubicación clara en el requisito). Se pueden sumar en la Task 7 si se confirma la pared.
 7. **Etiqueta del botón de cortinas:** se sigue el patrón del techo (texto que cambia + `aria-pressed`) por consistencia. Alternativa más estricta en accesibilidad: etiqueta fija "Bajar cortinas" con `aria-pressed`, y lo mismo para el techo en otro cambio.
