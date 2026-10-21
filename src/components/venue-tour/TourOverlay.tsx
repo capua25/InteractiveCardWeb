@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { TourSceneId, VenueTheme } from "@/domain/venue";
 import { themeToCssVars } from "@/lib/theme";
+import { useShouldAnimate } from "@/lib/use-should-animate";
 // Solo tipos y el registro: three llega recién con el import() dinámico de loadTourScene.
 import { loadTourScene } from "@/tour/registry";
 import type { TourController, TourView } from "@/tour/types";
@@ -29,6 +30,9 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
   const [attempt, setAttempt] = useState(0);
   const [view, setView] = useState<TourView>("out");
   const [roofVisible, setRoofVisible] = useState(true);
+  const [curtainsOpen, setCurtainsOpen] = useState(true);
+  const [hasCurtains, setHasCurtains] = useState(false);
+  const shouldAnimate = useShouldAnimate();
   const hostRef = useRef<HTMLDivElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -118,6 +122,7 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
           return;
         }
         controllerRef.current = controller;
+        setHasCurtains(controller.hasCurtains);
         setStatus("ready");
       },
       () => {
@@ -136,6 +141,7 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
     closeRef.current?.focus();
     setView("out");
     setRoofVisible(true);
+    setCurtainsOpen(true);
     setStatus("loading");
     setAttempt((n) => n + 1);
   };
@@ -149,6 +155,13 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
     const next = !roofVisible;
     controllerRef.current?.setRoofVisible(next);
     setRoofVisible(next);
+  };
+
+  // El rig no mira prefers-reduced-motion: con reduce las cortinas saltan sin animar.
+  const toggleCurtains = () => {
+    const next = !curtainsOpen;
+    controllerRef.current?.setCurtainsOpen(next, shouldAnimate);
+    setCurtainsOpen(next);
   };
 
   return createPortal(
@@ -172,6 +185,11 @@ export function TourOverlay({ scene, venueName, theme, onClose }: TourOverlayPro
             <button type="button" aria-pressed={!roofVisible} className={toggleClass(!roofVisible)} onClick={toggleRoof}>
               {roofVisible ? "Sin techo" : "Con techo"}
             </button>
+            {hasCurtains ? (
+              <button type="button" aria-pressed={!curtainsOpen} className={toggleClass(!curtainsOpen)} onClick={toggleCurtains}>
+                {curtainsOpen ? "Bajar cortinas" : "Subir cortinas"}
+              </button>
+            ) : null}
           </>
         ) : null}
         <button ref={closeRef} type="button" className={`${buttonClass} ml-auto bg-white/10 text-white hover:bg-white/20`} onClick={onClose}>

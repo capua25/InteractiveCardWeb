@@ -106,6 +106,10 @@ test("el visor abre con canvas, sus botones responden y Cerrar vuelve con scroll
   await expect(afuera).toHaveAttribute("aria-pressed", "true");
   await dialog.getByRole("button", { name: "Sin techo" }).tap();
   await expect(dialog.getByRole("button", { name: "Con techo" })).toHaveAttribute("aria-pressed", "true");
+  await dialog.getByRole("button", { name: "Bajar cortinas" }).tap();
+  await expect(dialog.getByRole("button", { name: "Subir cortinas" })).toHaveAttribute("aria-pressed", "true");
+  await dialog.getByRole("button", { name: "Subir cortinas" }).tap();
+  await expect(dialog.getByRole("button", { name: "Bajar cortinas" })).toHaveAttribute("aria-pressed", "false");
 
   await dialog.getByRole("button", { name: "Cerrar" }).tap();
   await expect(dialog).toBeHidden();
@@ -181,6 +185,10 @@ test.describe("con prefers-reduced-motion", () => {
     await expect(afuera).toHaveAttribute("aria-pressed", "true");
     await dialog.getByRole("button", { name: "Sin techo" }).tap();
     await expect(dialog.getByRole("button", { name: "Con techo" })).toHaveAttribute("aria-pressed", "true");
+    await dialog.getByRole("button", { name: "Bajar cortinas" }).tap();
+    await expect(dialog.getByRole("button", { name: "Subir cortinas" })).toHaveAttribute("aria-pressed", "true");
+    await dialog.getByRole("button", { name: "Subir cortinas" }).tap();
+    await expect(dialog.getByRole("button", { name: "Bajar cortinas" })).toHaveAttribute("aria-pressed", "false");
     await dialog.getByRole("button", { name: "Cerrar" }).tap();
     await expect(dialog).toBeHidden();
   });

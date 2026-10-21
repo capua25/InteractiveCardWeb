@@ -9,6 +9,11 @@ import { hasWebGL } from "@/tour/webgl";
 
 vi.mock("@/tour/registry", () => ({ loadTourScene: vi.fn() }));
 vi.mock("@/tour/webgl", () => ({ hasWebGL: vi.fn(() => true) }));
+const reducedMotion = vi.hoisted(() => ({ value: false }));
+vi.mock("motion/react", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("motion/react")>()),
+  useReducedMotion: () => reducedMotion.value,
+}));
 
 const loadTourSceneMock = vi.mocked(loadTourScene);
 const hasWebGLMock = vi.mocked(hasWebGL);
@@ -29,6 +34,9 @@ beforeEach(() => {
   mount.mockReset().mockImplementation(() => controller);
   controller.setView.mockReset();
   controller.setRoofVisible.mockReset();
+  controller.setCurtainsOpen.mockReset();
+  controller.hasCurtains = true;
+  reducedMotion.value = false;
   controller.dispose.mockReset();
   vi.spyOn(history, "back").mockImplementation(() => {});
   document.body.style.overflow = "";
@@ -70,10 +78,10 @@ describe("TourOverlay", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
-  it("los botones siguen el orden Afuera, Adentro, Sin techo, Cerrar", async () => {
+  it("los botones siguen el orden Afuera, Adentro, Sin techo, Bajar cortinas, Cerrar", async () => {
     renderOverlay();
     await screen.findByRole("button", { name: "Afuera" });
-    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Afuera", "Adentro", "Sin techo", "Cerrar"]);
+    expect(screen.getAllByRole("button").map((b) => b.textContent)).toEqual(["Afuera", "Adentro", "Sin techo", "Bajar cortinas", "Cerrar"]);
   });
 
   it("Afuera y Adentro llaman a setView y aria-pressed sigue la vista activa", async () => {
@@ -99,6 +107,45 @@ describe("TourOverlay", () => {
     await userEvent.click(withRoof);
     expect(controller.setRoofVisible).toHaveBeenLastCalledWith(true);
     expect(screen.getByRole("button", { name: "Sin techo" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("Bajar cortinas alterna setCurtainsOpen, aria-pressed y el texto", async () => {
+    renderOverlay();
+    await userEvent.click(await screen.findByRole("button", { name: "Bajar cortinas" }));
+    expect(controller.setCurtainsOpen).toHaveBeenLastCalledWith(false, expect.any(Boolean));
+    const raise = screen.getByRole("button", { name: "Subir cortinas" });
+    expect(raise).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(raise);
+    expect(controller.setCurtainsOpen).toHaveBeenLastCalledWith(true, expect.any(Boolean));
+    expect(screen.getByRole("button", { name: "Bajar cortinas" })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("anima las cortinas por defecto", async () => {
+    renderOverlay();
+    await userEvent.click(await screen.findByRole("button", { name: "Bajar cortinas" }));
+    expect(controller.setCurtainsOpen).toHaveBeenLastCalledWith(false, true);
+  });
+
+  it("con reduced motion pide setCurtainsOpen sin animar", async () => {
+    reducedMotion.value = true;
+    renderOverlay();
+    await userEvent.click(await screen.findByRole("button", { name: "Bajar cortinas" }));
+    expect(controller.setCurtainsOpen).toHaveBeenLastCalledWith(false, false);
+  });
+
+  it("sin cortinas en la escena no muestra el botón", async () => {
+    controller.hasCurtains = false;
+    renderOverlay();
+    await screen.findByRole("button", { name: "Afuera" });
+    expect(screen.queryByRole("button", { name: /cortinas/ })).not.toBeInTheDocument();
+  });
+
+  it("Reintentar vuelve las cortinas a enrolladas", async () => {
+    renderOverlay();
+    await userEvent.click(await screen.findByRole("button", { name: "Bajar cortinas" }));
+    act(() => mount.mock.calls[0][1].onContextLost());
+    await userEvent.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(await screen.findByRole("button", { name: "Bajar cortinas" })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("Cerrar llama a onClose", async () => {
