@@ -66,7 +66,7 @@ test("un slug inexistente responde 404", async ({ page }) => {
 
 test("la raíz redirige al primer salón", async ({ page }) => {
   await page.goto("/");
-  await expect(page).toHaveURL(/\/salon-ejemplo$/);
+  await expect(page).toHaveURL(/\/barbatos$/);
 });
 
 test.describe("con prefers-reduced-motion", () => {

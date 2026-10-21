@@ -3,6 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./e2e",
   use: { baseURL: "http://localhost:3100" },
+  // El headless de Chromium trae WebGL por SwiftShader (ANGLE/Vulkan): tour.spec no necesita flags de GPU.
   projects: [{ name: "mobile-chrome", use: { ...devices["Pixel 7"] } }],
   webServer: {
     command: "npm run build && npm run start -- -p 3100",

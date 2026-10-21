@@ -22,6 +22,8 @@ npm run dev        # http://localhost:3000 → redirige al primer salón
    - `whatsapp.phone` acepta cualquier formato (`+54 9 11 1234-5678`): se limpia a dígitos.
    - `theme.fontHeading` es un `font-family` CSS; `"var(--font-playfair), Georgia, serif"` usa la fuente ya cargada.
    - `location.embedUrl`: en Google Maps → Compartir → Insertar un mapa → copiar el `src` del iframe.
+   - `tour` (opcional): `{ scene: "<id>" }` muestra "Recorrer el salón" en el hero. Cada escena 3D vive en
+     `src/tour/scenes/<id>/` (se registra en `src/tour/registry.ts`) y sus medidas están en `dimensions.ts`.
 3. La tarjeta queda en `/<slug>`. No hace falta tocar componentes: si falta un campo obligatorio, el build no compila.
 
 ## Tests

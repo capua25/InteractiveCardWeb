@@ -34,10 +34,15 @@ describe("createVenueRepository", () => {
 });
 
 describe("repositorio con el contenido real", () => {
-  it("expone los salones de ejemplo", () => {
-    expect(getAllSlugs()).toEqual(["salon-ejemplo", "salon-minimo"]);
+  it("Barbato's es la portada y los ejemplos siguen", () => {
+    expect(getAllSlugs()).toEqual(["barbatos", "salon-ejemplo", "salon-minimo"]);
+    const b = getVenueBySlug("barbatos")!;
+    expect(b).toMatchObject({ name: "Barbato's", envelope: true, tour: { scene: "barbatos" } });
+    expect(b.logo).toBeUndefined();
     expect(getVenueBySlug("salon-ejemplo")?.envelope).toBe(true);
     expect(getVenueBySlug("salon-minimo")?.envelope).toBe(false);
+    expect(getVenueBySlug("salon-ejemplo")?.tour).toBeUndefined();
+    expect(getVenueBySlug("salon-minimo")?.tour).toBeUndefined();
   });
 
   it("no repite slugs", () => {
