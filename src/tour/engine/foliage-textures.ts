@@ -169,33 +169,34 @@ function leafClusters(seed: number, hue: number, sat: number, light: number, hue
 // la cúpula y en la falda: un solo follaje).
 const willow: Draw = (g, s) => {
   const R = rng(31);
-  const strands = 62;
+  // ramitas finas y largas (casi toda la tarjeta) con hojas chicas y angostas: se lee "ramas que caen", no una mota
+  const strands = 85;
+  const step = s * 0.014;
   for (let i = 0; i < strands; i++) {
-    let x = s * (0.04 + 0.92 * R());
-    let y = s * R() * 0.12;
-    const len = s * (0.55 + R() * 0.43);
-    const sway = (R() - 0.5) * 0.25;
-    const steps = Math.round(len / (s * 0.022));
-    const l0 = 34 + R() * 14;
-    g.strokeStyle = "#556b2a";
-    g.lineWidth = Math.max(1, s / 400);
+    let x = s * (0.03 + 0.94 * R());
+    let y = s * R() * 0.08;
+    const len = s * (0.7 + R() * 0.28);
+    const sway = (R() - 0.5) * 0.2;
+    const steps = Math.round(len / step);
+    const hue = 92 + (R() - 0.5) * 14, l0 = 38 + R() * 12;
+    g.strokeStyle = hsl(85, 30, 32);
+    g.lineWidth = Math.max(1, s / 512);
     g.beginPath();
     g.moveTo(x, y);
     const pts: [number, number][] = [];
     for (let k = 0; k < steps; k++) {
-      x += Math.sin(k * 0.3 + i) * s * 0.002 + sway * s * 0.01;
-      y += s * 0.022;
+      x += Math.sin(k * 0.25 + i) * s * 0.0015 + sway * s * 0.006;
+      y += step;
       g.lineTo(x, y);
       pts.push([x, y]);
     }
     g.stroke();
     for (const [k, [px, py]] of pts.entries()) {
       const t = k / steps;
-      for (const side of [-1, 1]) {
-        const ang = Math.PI / 2 + side * (0.35 + R() * 0.35);
-        const len = s * (0.05 + R() * 0.02) * (1 - 0.35 * t);
-        leaf(g, px, py, len, len * 0.26, ang, hsl(78 + (R() - 0.5) * 14, 48 + R() * 14, l0 + (R() - 0.5) * 10 - t * 6));
-      }
+      const side = k % 2 ? 1 : -1;
+      const ang = Math.PI / 2 + side * (0.3 + R() * 0.3);
+      const len = s * (0.032 + R() * 0.014) * (1 - 0.3 * t);
+      leaf(g, px, py, len, len * 0.24, ang, hsl(hue + (R() - 0.5) * 10, 46 + R() * 12, l0 + (R() - 0.5) * 8 - t * 5));
     }
   }
 };

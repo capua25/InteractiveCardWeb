@@ -287,7 +287,7 @@ describe("ELEMENTS de Barbato's", () => {
       const C = CARDS[detail];
       const meshes = veg(detail);
       // el sauce entero (cúpula y falda) va con la textura de hebras; el resto de los árboles, con la de hojas
-      const trees = v.saplings.length * C.sapling + v.tallSaplings.length * C.tall + v.wallRow.length * C.wallRow + v.poplars.length * C.poplar;
+      const trees = v.saplings.length * C.sapling + v.tallSaplings.length * C.tall + v.wallRow.length * C.wallRow + v.poplars.length * (C.poplar + C.poplarBase);
       expect(cardsOf(byMaterial(meshes, "leaves")[0])).toBe(trees);
       expect(cardsOf(byMaterial(meshes, "willow")[0])).toBe(v.willows.length * (C.willowDome + C.willowSkirt));
       expect(cardsOf(byMaterial(meshes, "photinia")[0])).toBe(C.photinia);
@@ -318,13 +318,25 @@ describe("ELEMENTS de Barbato's", () => {
         expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(s.height * 0.5);
       }
     });
-    it("álamos: follaje en columna desde 0.3–0.5 m del pasto hasta cerca de la punta", () => {
+    it("álamos: follaje en columna desde ~0.15 m del pasto (sin tocarlo) hasta cerca de la punta", () => {
       const leaves = worldVertices(byMaterial(veg("high"), "leaves")[0]);
       for (const p of v.poplars) {
         const ys = leaves.filter((q) => Math.abs(q.x - p.x) < 0.9 && Math.abs(q.z - p.z) < 0.6).map((q) => q.y);
-        expect(Math.min(...ys), `${p.z}`).toBeGreaterThanOrEqual(0.05);
-        expect(Math.min(...ys), `${p.z}`).toBeLessThanOrEqual(0.6);
+        expect(Math.min(...ys), `${p.z}`).toBeGreaterThan(0);
+        expect(Math.min(...ys), `${p.z}`).toBeLessThanOrEqual(0.25);
         expect(Math.max(...ys), `${p.z}`).toBeGreaterThan(p.height * 0.75);
+      }
+    });
+    it.each(["high", "low"] as const)("árboles jóvenes del parque (%s): matas chicas repartidas por las ramas, no un óvalo macizo", (detail) => {
+      const vs = worldVertices(byMaterial(veg(detail), "leaves")[0]);
+      for (const t of v.tallSaplings) {
+        const cards = Array.from({ length: vs.length / 4 }, (_, c) => vs.slice(c * 4, c * 4 + 4)).filter((q) => q.every((p) => Math.hypot(p.x - t.x, p.z - t.z) < t.radius + 0.6));
+        expect(cards).toHaveLength(CARDS[detail].tall);
+        // matas chicas: el lado de cada tarjeta ≤ 0.6·radio de copa (antes ~1.25·radio)
+        for (const q of cards) expect(q[0].distanceTo(q[1])).toBeLessThanOrEqual(0.6 * t.radius * CARDS[detail].scale + 1e-6);
+        // repartidas en altura (de las ramas bajas a la guía), no apiñadas en una bola
+        const ys = cards.map((q) => q.reduce((a, p) => a + p.y, 0) / 4);
+        expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(0.35 * t.height);
       }
     });
     it("fotinia: varios tallos desde el pie y hojas solo en los 2/3 de arriba", () => {
@@ -407,17 +419,17 @@ describe("ELEMENTS de Barbato's", () => {
         }
       }
     });
-    it.each(["high", "low"] as const)("álamos (%s): cortina continua a lo largo del muro, sin huecos de más de 0.3 m entre 1 y 3 m de alto", (detail) => {
+    it.each([["high", 1, 3], ["low", 1, 3], ["high", 0.2, 1.2], ["low", 0.2, 1.2]] as const)("álamos (%s): cortina continua a lo largo del muro, sin huecos de más de 0.3 m entre %f y %f m de alto", (detail, y0, y1) => {
       const vs = worldVertices(byMaterial(veg(detail), "leaves")[0]);
       const ps = v.poplars;
-      // tarjetas de la franja de los álamos (todas sus esquinas a menos de 1.5 m del muro) con el centro entre 1 y 3 m:
+      // tarjetas de la franja de los álamos (todas sus esquinas a menos de 1.5 m del muro) con el centro entre y0 e y1:
       // cada una cubre en z el intervalo de sus esquinas
       const band = -BARBATOS_LAYOUT.lot.halfWidth + 1.5;
       const spans: [number, number][] = [];
       for (let c = 0; c < vs.length / 4; c++) {
         const q = vs.slice(c * 4, c * 4 + 4);
         const y = q.reduce((t, p) => t + p.y, 0) / 4;
-        if (q.every((p) => p.x < band) && y > 1 && y < 3) spans.push([Math.min(...q.map((p) => p.z)), Math.max(...q.map((p) => p.z))]);
+        if (q.every((p) => p.x < band) && y > y0 && y < y1) spans.push([Math.min(...q.map((p) => p.z)), Math.max(...q.map((p) => p.z))]);
       }
       spans.sort((x, y) => x[0] - y[0]);
       const from = ps[ps.length - 1].z, to = ps[0].z;

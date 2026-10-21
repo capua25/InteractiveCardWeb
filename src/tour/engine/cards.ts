@@ -7,6 +7,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 const UP = new THREE.Vector3(0, 1, 0);
 const POLE = 0.8; // |y| máximo de la dirección de una tarjeta sobre el elipsoide
+const MIN_ABOVE_GROUND = 0.02; // m: ninguna esquina de tarjeta de columna por debajo
 const MIN_TILT = 1.2; // |horizontal| / |vertical| mínimo de la normal de una tarjeta de copa: normal a ≥ 50° de la vertical
 
 export type Card = {
@@ -137,6 +138,7 @@ export type Column = {
   count: number;
   size: number;
   aspect?: number;
+  baseFill?: { height: number; count: number }; // tarjetas extra, anchas y hacia afuera, en el tramo de abajo
 };
 
 /** Copa columnar (álamo): tarjetas apiladas en espiral de `from` a `to`, verticales y mirando hacia afuera, con la
@@ -147,29 +149,45 @@ export function addColumn(b: CardBuilder, c: Column, R: () => number): void {
   const rx = c.radius, rz = c.radiusZ ?? c.radius;
   const golden = Math.PI * (3 - Math.sqrt(5));
   const phase = R() * Math.PI * 2;
-  for (let k = 0; k < c.count; k++) {
-    const t = (k + 0.5) / c.count;
-    const width = c.size * (1 - 0.35 * t) * (0.9 + R() * 0.2);
-    const height = width * aspect;
-    const y = c.from + height / 2 + t * (c.to - c.from - height);
-    const a = phase + k * golden + (R() - 0.5) * 0.4;
+  const inside = (cc: Card) => cardCorners(cc).corners.every((p) => ((p.x - c.base.x) / rx) ** 2 + ((p.z - c.base.z) / rz) ** 2 <= 1 + 1e-9);
+  // una tarjeta a altura y, con dirección a y alcance relativo `reach` (0..1 del semieje); si alguna esquina sale de
+  // la huella primero se acerca al tronco y, si ni pegada al tronco entra, se achica
+  const place = (y: number, width: number, height: number, a: number, reach: number) => {
     const out = new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
-    // centros hacia afuera (sesgo √): la columna se ve llena hasta el borde, no un anillo hueco
-    let reach = (0.15 + 0.45 * Math.sqrt(R())) * Math.sin(Math.PI * (0.25 + 0.75 * t)) ** 0.5;
     const up = UP.clone().applyAxisAngle(out, (R() - 0.5) * 0.8);
     const card = (r: number, scale: number): Card => ({
       center: new THREE.Vector3(c.base.x + out.x * r * rx, y, c.base.z + out.z * r * rz),
       normal: out.clone().setY(0.15), up, width: width * scale, height: height * scale,
       bendFrom: new THREE.Vector3(c.base.x, y - 0.3, c.base.z), bend: 0.7,
     });
-    const inside = (cc: Card) => cardCorners(cc).corners.every((p) => ((p.x - c.base.x) / rx) ** 2 + ((p.z - c.base.z) / rz) ** 2 <= 1 + 1e-9);
-    // si alguna esquina sale de la huella: primero se acerca al tronco y, si ni pegada al tronco entra, se achica
     let scale = 1;
     while (!inside(card(reach, scale))) {
       if (reach > 1e-3) reach = Math.max(0, reach - 0.05);
       else scale *= 0.9;
     }
-    b.add(card(reach, scale));
+    // una tarjeta girada (roll) baja una esquina: que nunca se meta en el pasto
+    const final = card(reach, scale);
+    const low = Math.min(...cardCorners(final).corners.map((p) => p.y));
+    if (low < MIN_ABOVE_GROUND) final.center.y += MIN_ABOVE_GROUND - low;
+    b.add(final);
+  };
+  for (let k = 0; k < c.count; k++) {
+    const t = (k + 0.5) / c.count;
+    const width = c.size * (1 - 0.35 * t) * (0.9 + R() * 0.2);
+    const height = width * aspect;
+    const y = c.from + height / 2 + t * (c.to - c.from - height);
+    // centros hacia afuera (sesgo √): la columna se ve llena hasta el borde, no un anillo hueco
+    const reach = (0.15 + 0.45 * Math.sqrt(R())) * Math.sin(Math.PI * (0.25 + 0.75 * t)) ** 0.5;
+    place(y, width, height, phase + k * golden + (R() - 0.5) * 0.4, reach);
+  }
+  // relleno del pie: tarjetas más anchas que altas, cerca del borde, para que entre columnas vecinas no se vean
+  // troncos ni huecos en el primer tramo
+  const fill = c.baseFill;
+  for (let k = 0; fill && k < fill.count; k++) {
+    const width = c.size * (1.05 + R() * 0.2);
+    const height = width * 0.85;
+    const y = c.from + height / 2 + ((k + R()) / fill.count) * Math.max(0, fill.height - height);
+    place(y, width, height, phase + (k + 0.5) * golden * 1.7 + (R() - 0.5) * 0.4, 0.35 + 0.3 * Math.sqrt(R()));
   }
 }
 

@@ -88,7 +88,7 @@ export function createMaterials(
     gabion: { map: T.stone, color: tint(2.3, 2.3, 2.5), roughness: 0.9 },
     // follaje: la textura trae el color; el tinte (azul > 1) compensa la luz cálida como en el pasto
     leaves: { map: T.leaves, color: tint(0.74, 1, 1.45), roughness: 0.9 },
-    willow: { map: T.willow, color: tint(0.7, 1.02, 1.6), roughness: 0.9 },
+    willow: { map: T.willow, color: tint(0.62, 1, 1.7), roughness: 0.9 },
     photinia: { map: T.photiniaLeaves, color: tint(1, 1, 1.25), roughness: 0.9 },
     phormium: { map: T.flax, color: tint(1, 1, 1.3), roughness: 0.8 },
     lavender: { map: T.lavender, color: tint(0.82, 1, 1.5), roughness: 1 },
