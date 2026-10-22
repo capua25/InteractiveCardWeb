@@ -88,3 +88,6 @@ export const parallax: { yRange: string[]; scaleRange: number[] } = { yRange: ["
 
 // Lightbox: fundido del fondo.
 export const backdropFade: Transition = { duration: 0.25, ease: "easeOut" };
+
+// Lightbox: la foto nueva entra deslizándose desde el lado hacia el que se navegó.
+export const photoSlide: Transition = { duration: 0.25, ease: "easeOut" };
