@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { Gallery } from "@/components/gallery/Gallery";
@@ -79,9 +79,16 @@ describe("Gallery", () => {
       await userEvent.click(screen.getByRole("button", { name: `Ampliar imagen: ${alt}` }));
       return screen.getByRole("dialog");
     };
-    const swipe = (target: Element, from: [number, number], to: [number, number], pointerId = 1) => {
-      fireEvent.pointerDown(target, { clientX: from[0], clientY: from[1], pointerId, isPrimary: true });
-      fireEvent.pointerUp(target, { clientX: to[0], clientY: to[1], pointerId, isPrimary: true });
+    // jsdom estampa timeStamp con el reloj real (ms enteros): dos eventos síncronos caen
+    // a veces en el mismo ms y a veces en ms consecutivos, y 30 px en 1 ms es un flick.
+    // Se fija la duración del gesto para que el resultado no dependa de la velocidad de la máquina.
+    const swipe = (target: Element, from: [number, number], to: [number, number], pointerId = 1, durationMs = 300) => {
+      const down = createEvent.pointerDown(target, { clientX: from[0], clientY: from[1], pointerId, isPrimary: true });
+      const up = createEvent.pointerUp(target, { clientX: to[0], clientY: to[1], pointerId, isPrimary: true });
+      Object.defineProperty(down, "timeStamp", { value: 1000 });
+      Object.defineProperty(up, "timeStamp", { value: 1000 + durationMs });
+      fireEvent(target, down);
+      fireEvent(target, up);
     };
 
     it("ArrowRight y ArrowLeft cambian de foto y el contador la acompaña", async () => {
