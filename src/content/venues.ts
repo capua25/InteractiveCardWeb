@@ -23,11 +23,22 @@ export const venues: Venue[] = [
     hero: { image: "/venues/barbatos/hero.jpg" },
     about:
       "Un salón con galería y parque para celebrar al aire libre o bajo techo, con hogar a leña para las noches frías. (PLACEHOLDER)",
+    // Fotos elegidas por los dueños. Orden narrativo: llegada y fachada → explanada →
+    // interior → galería → parque → fogón → atardecer → noche.
     gallery: [
+      { src: "/venues/barbatos/fachada-frente.jpg", alt: "Frente del salón de día, con la pérgola de la entrada y la explanada de pedregullo" },
+      { src: "/venues/barbatos/entrada-pergola.jpg", alt: "Entrada principal bajo la pérgola de listones negros, con la puerta vidriada" },
+      { src: "/venues/barbatos/explanada-pedregullo.jpg", alt: "Explanada de pedregullo bordeada de piedras frente al salón" },
       { src: "/venues/barbatos/gallery-1.jpg", alt: "Interior del salón con mesas redondas" },
       { src: "/venues/barbatos/gallery-2.jpg", alt: "Interior del salón mirando hacia el hogar" },
       { src: "/venues/barbatos/gallery-3.jpg", alt: "Vista panorámica del interior del salón" },
-      { src: "/venues/barbatos/gallery-4.jpg", alt: "Galería trasera y parque" },
+      { src: "/venues/barbatos/galeria-exterior.jpg", alt: "Lateral del salón con la chimenea, el muro de piedra y la galería cerrada con cortinas" },
+      { src: "/venues/barbatos/galeria-techada.jpg", alt: "Galería techada con las luces encendidas y cortinas transparentes a lo largo del salón" },
+      { src: "/venues/barbatos/galeria-desde-parque.jpg", alt: "Galería cerrada con cortinas vista desde el parque, junto al anexo gris" },
+      { src: "/venues/barbatos/parque-cesped.jpg", alt: "Parque de césped amplio bajo un cielo con nubes, con el fogón y el muro perimetral al fondo" },
+      { src: "/venues/barbatos/fogon-piedra.jpg", alt: "Fogón de piedra sobre un círculo de arena, con la galería y las guirnaldas de luces detrás" },
+      { src: "/venues/barbatos/atardecer-parque.jpg", alt: "Atardecer sobre el parque, con el sol bajando detrás de los árboles" },
+      { src: "/venues/barbatos/gallery-4.jpg", alt: "Galería trasera y parque de noche, bajo las guirnaldas de luces" },
       { src: "/venues/barbatos/gallery-5.jpg", alt: "Frente del salón de noche" },
     ],
     location: {

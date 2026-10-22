@@ -9,7 +9,8 @@ describe("contenido de Barbato's", () => {
     for (const src of [b.hero.image, b.seo.ogImage, ...b.gallery!.map((g) => g.src)]) {
       expect(existsSync(join("public", src)), src).toBe(true);
     }
-    expect(b.gallery).toHaveLength(5);
+    expect(b.gallery).toHaveLength(14);
+    expect(new Set(b.gallery!.map((g) => g.src)).size).toBe(b.gallery!.length);
     const png = readFileSync(join("public", b.seo.ogImage));
     expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([1200, 630]);
     expect(png.length).toBeLessThanOrEqual(300 * 1024);
